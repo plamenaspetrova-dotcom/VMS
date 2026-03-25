@@ -1,0 +1,1404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>BuildingOS — Visitor Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--bg2:#161b26;--bg3:#1e2535;--bg4:#252d3f;
+  --border:#2a3348;--border2:#3a4560;
+  --text:#e8edf5;--text2:#8b95a8;--text3:#5a6478;
+  --blue:#3b82f6;--blue2:#1d4ed8;--blue-bg:#1e2d4a;
+  --green:#22c55e;--green-bg:#14291e;
+  --red:#ef4444;--red-bg:#2a1515;--red-border:#7f1d1d;
+  --amber:#f59e0b;--amber-bg:#2a1f0a;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+/* LAYOUT */
+.app{display:flex;height:100vh}
+.sidebar{width:220px;min-width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
+.logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.logo-title{font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.3px}
+.logo-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.role-row{padding:10px 16px 6px;display:flex;gap:5px}
+.rbtn{padding:3px 10px;border:1px solid var(--border2);border-radius:20px;font-size:11px;cursor:pointer;background:transparent;color:var(--text2);transition:all .15s}
+.rbtn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.bld-section{padding:8px 16px 4px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.bld-section-label{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.bld-opt{display:flex;align-items:center;gap:7px;padding:4px 0;font-size:12px;color:var(--text2);cursor:pointer}
+.bld-opt input{accent-color:var(--blue);width:13px;height:13px}
+.bld-opt:hover{color:var(--text)}
+.bld-bar{margin-top:6px;padding:4px 8px;background:var(--blue-bg);border-radius:6px;font-size:11px;color:var(--blue);font-weight:500}
+.nav-section{font-size:10px;font-weight:500;color:var(--text3);padding:10px 16px 3px;text-transform:uppercase;letter-spacing:.06em}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--bg3);color:var(--text);font-weight:500;border-left-color:var(--blue)}
+.nav-item.hidden{display:none}
+.nav-icon{width:15px;height:15px;opacity:.6;flex-shrink:0}
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:22px 26px;background:var(--bg)}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:18px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.page-title{font-size:20px;font-weight:600;color:var(--text);letter-spacing:-.3px}
+.page-sub{font-size:13px;color:var(--text2);margin-top:3px}
+/* BUTTONS */
+.btn{padding:7px 14px;border:1px solid var(--border2);background:var(--bg3);border-radius:var(--radius);font-size:13px;cursor:pointer;color:var(--text);transition:all .15s}
+.btn:hover{background:var(--bg4);border-color:var(--border2)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--blue2)}
+.btn-success{background:#16a34a;color:#fff;border-color:#16a34a}
+.btn-success:hover{background:#15803d}
+.btn-sm{padding:3px 9px;font-size:12px}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* CARDS */
+.cards-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.metric-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.metric-label{font-size:11px;color:var(--text2);margin-bottom:6px}
+.metric-value{font-size:26px;font-weight:600;color:var(--text)}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+/* TABLE */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 9px;font-size:10px;font-weight:500;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+td{padding:8px 9px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg3)}
+/* BADGES */
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500;white-space:nowrap}
+.badge-in{background:var(--blue-bg);color:var(--blue)}
+.badge-out{background:var(--bg3);color:var(--text2)}
+.badge-Delivery{background:#2a1f0a;color:#f59e0b}
+.badge-Cleaning{background:#14291e;color:#22c55e}
+.badge-Maintenance{background:#2a1515;color:#f87171}
+.badge-Fitout,.badge-Fit-out{background:#1e1a2e;color:#a78bfa}
+.badge-Snagging{background:#2a1525;color:#f472b6}
+.badge-Contractor{background:var(--blue-bg);color:#60a5fa}
+.badge-Guest{background:#14291e;color:#34d399}
+.badge-Other{background:var(--bg3);color:var(--text2)}
+.badge-hot{background:#2a1515;color:#f87171}
+.badge-warm{background:#2a1f0a;color:#f59e0b}
+.badge-cold{background:var(--blue-bg);color:#60a5fa}
+.badge-closed{background:#14291e;color:#22c55e}
+.badge-owner{background:#1e1a2e;color:#a78bfa}
+.badge-tenant{background:var(--blue-bg);color:#60a5fa}
+.badge-vacant{background:var(--bg3);color:var(--text3)}
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+label{font-size:12px;font-weight:500;color:var(--text2)}
+input,select,textarea{padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius);font-size:13px;background:var(--bg3);color:var(--text);width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 2px rgba(59,130,246,.15)}
+textarea{resize:vertical;min-height:70px}
+select option{background:var(--bg3)}
+.form-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.filter-bar input[type=search]{flex:1;min-width:140px;max-width:260px}
+.filter-bar input[type=date],.filter-bar select{width:auto;min-width:130px}
+.date-range-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.date-range-bar label{font-size:12px;color:var(--text2);white-space:nowrap}
+.date-range-bar input[type=date]{width:145px}
+.rchip{padding:3px 10px;border:1px solid var(--border2);border-radius:20px;font-size:11px;cursor:pointer;background:transparent;color:var(--text2)}
+.rchip:hover,.rchip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+/* TABS */
+.tabs{display:flex;border-bottom:1px solid var(--border);margin-bottom:16px;gap:0}
+.tab{padding:9px 18px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue);font-weight:500}
+.tab-pane{display:none}.tab-pane.active{display:block}
+/* BLD TABS for grid */
+.bld-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.bld-tab{padding:5px 14px;border:1px solid var(--border2);border-radius:20px;font-size:12px;cursor:pointer;color:var(--text2);background:transparent}
+.bld-tab:hover{background:var(--bg3)}
+.bld-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+/* BLD CONTEXT BAR */
+.ctx-bar{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:7px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);font-size:12px;flex-wrap:wrap}
+.ctx-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue);font-size:11px;font-weight:500}
+/* SUMMARY BAR */
+.summary-bar{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 14px;margin-bottom:14px;font-size:12px;color:var(--text2)}
+.summary-bar strong{color:var(--text)}
+/* STATUS */
+.status-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-in{background:var(--blue)}.dot-out{background:var(--text3)}
+.live-pulse{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px;width:560px;max-width:95%;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-title{font-size:16px;font-weight:600;color:var(--text)}
+.close-btn{background:none;border:none;cursor:pointer;font-size:22px;color:var(--text3);line-height:1}
+.close-btn:hover{color:var(--text)}
+/* COMBO */
+.combo-wrap{position:relative}
+.combo-dd{position:absolute;top:100%;left:0;right:0;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);z-index:300;max-height:180px;overflow-y:auto;margin-top:2px;display:none}
+.combo-dd.open{display:block}
+.combo-opt{padding:7px 10px;font-size:13px;cursor:pointer;color:var(--text)}
+.combo-opt:hover{background:var(--bg4)}
+.combo-opt.add-new{color:var(--blue);font-weight:500}
+/* CHECKOUT ROW */
+.co-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:10px}
+.co-row:last-child{border-bottom:none}
+/* CHARTS */
+.chart-wrap{position:relative;width:100%;height:200px;margin-top:8px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* UNIT BAR */
+.ubar-bg{width:90px;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.ubar-fill{height:100%;background:var(--blue);border-radius:3px}
+/* UNIT GRID */
+.grid-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.grid-legend{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.leg-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+.grid-summary{display:flex;gap:16px;margin-bottom:12px;flex-wrap:wrap}
+.gs{font-size:11px;color:var(--text2)}
+.gs strong{font-size:13px;font-weight:600;margin-right:3px}
+.unit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:4px}
+.u-tile{border-radius:5px;padding:4px 4px 3px;cursor:pointer;transition:transform .1s;position:relative;min-height:38px;display:flex;flex-direction:column;justify-content:space-between;user-select:none;border:1px solid transparent}
+.u-tile:hover{transform:translateY(-2px);z-index:2}
+/* base states */
+.u-tile.none{background:var(--bg3);border-color:var(--border)}
+.u-tile.vacant{background:var(--bg2);border:1px dashed var(--border);opacity:.5}
+/* green = other companies only */
+.u-tile.green{background:var(--green-bg);border-color:#166534}
+/* red frame = flagged company ever visited */
+.u-tile.red-frame{background:var(--bg3);border:2px solid var(--red);box-shadow:0 0 0 1px var(--red-bg)}
+/* red solid = flagged only visiting today/live */
+.u-tile.red-solid{background:var(--red-bg);border:2px solid var(--red)}
+/* amber = flagged + others today */
+.u-tile.amber{background:var(--amber-bg);border:2px solid var(--amber)}
+.u-label{font-size:9px;font-weight:600;line-height:1.2;color:var(--text2)}
+.u-tile.green .u-label{color:#86efac}
+.u-tile.red-frame .u-label{color:var(--text2)}
+.u-tile.red-solid .u-label{color:#fca5a5}
+.u-tile.amber .u-label{color:#fcd34d}
+.u-dots{display:flex;gap:2px;flex-wrap:wrap;margin-top:3px}
+.u-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.u-live{position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+.flag-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius)}
+.flag-label{font-size:12px;color:var(--text2);white-space:nowrap}
+.flag-tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--red-bg);color:var(--red);border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--red-border)}
+.flag-tag button{background:none;border:none;cursor:pointer;color:var(--red);font-size:13px;line-height:1;padding:0;margin-left:2px}
+.flag-input{padding:5px 9px;border:1px solid var(--border2);border-radius:var(--radius);font-size:12px;background:var(--bg3);color:var(--text);width:170px}
+.flag-input:focus{outline:none;border-color:var(--red)}
+/* TOOLTIP */
+.tp{position:fixed;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:14px 16px;z-index:999;width:260px;display:none;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.tp-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.tp-close{background:none;border:none;cursor:pointer;font-size:18px;color:var(--text3)}
+.tp-section{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 5px}
+.tp-row{padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
+.tp-row:last-child{border-bottom:none}
+.tp-name{font-weight:500;color:var(--text)}
+.tp-flag{color:var(--red)}
+.tp-meta{color:var(--text2);margin-top:2px}
+/* UNIT PROFILE */
+.prof-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.prof-avatar{width:56px;height:56px;border-radius:var(--radius-lg);background:var(--blue-bg);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;color:var(--blue);flex-shrink:0;border:1px solid var(--border2)}
+.prof-meta{flex:1}
+.prof-unit{font-size:20px;font-weight:600;color:var(--text)}
+.prof-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}
+.prof-stats{display:flex;gap:18px;margin-top:8px;flex-wrap:wrap}
+.prof-stat{font-size:12px;color:var(--text2)}
+.prof-stat strong{color:var(--text);font-size:14px}
+.prof-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:16px}
+.cat-card{border-radius:var(--radius);padding:10px 12px;border:1px solid var(--border)}
+.cat-card-label{font-size:10px;font-weight:500;margin-bottom:3px}
+.cat-card-val{font-size:20px;font-weight:600}
+/* ENTRY CARD */
+.entry-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px}
+.entry-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:5px}
+.entry-meta{font-size:11px;color:var(--text3)}
+.entry-body{font-size:13px;color:var(--text);line-height:1.5}
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--blue);color:#fff;padding:10px 18px;border-radius:var(--radius);font-size:13px;z-index:9999;display:none;animation:fadeup .2s}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* RESIDENT SECTION */
+.res-section{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px}
+.res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.res-field{font-size:12px;color:var(--text2)}
+.res-field strong{display:block;font-size:13px;color:var(--text);margin-bottom:2px}
+.res-edit-btn{padding:4px 10px;border:1px solid var(--border2);border-radius:20px;font-size:11px;cursor:pointer;background:transparent;color:var(--text2)}
+.res-edit-btn:hover{background:var(--bg4);color:var(--text)}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+/* FOH TAB FLASH */
+@keyframes tabflash{0%{background:rgba(245,158,11,.3)}100%{background:transparent}}
+.foh-tab-flash{animation:tabflash .6s ease-out}
+.nav-item.foh-highlight{background:linear-gradient(90deg,rgba(245,158,11,.12),transparent);border-left:2px solid var(--amber)!important;color:#fcd34d!important}
+.nav-item.foh-highlight .nav-icon{opacity:1;filter:drop-shadow(0 0 4px #f59e0b)}
+.nav-item.foh-highlight:hover{background:linear-gradient(90deg,rgba(245,158,11,.2),transparent)}
+/* GRID TAB HIGHLIGHT */
+.tab.grid-highlight{color:#f59e0b!important;border-bottom-color:#f59e0b!important;font-weight:500}
+.tab.grid-highlight::before{content:'★ ';font-size:10px}
+/* FOH PAGE ACCENT */
+.foh-accent-bar{background:linear-gradient(90deg,rgba(245,158,11,.15),transparent);border:1px solid rgba(245,158,11,.3);border-radius:var(--radius);padding:8px 14px;margin-bottom:14px;font-size:12px;color:#fcd34d;display:flex;align-items:center;gap:8px}
+/* GRID SECTION ACCENT */
+.grid-accent-label{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:20px;font-size:11px;font-weight:500;color:#fcd34d;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-title">BuildingOS</div>
+      <div class="logo-sub">Visitor Management</div>
+    </div>
+    <div class="role-row">
+      <button class="rbtn active" id="rbtn-s" onclick="setRole('security')">Security</button>
+      <button class="rbtn" id="rbtn-f" onclick="setRole('foh')">FOH</button>
+    </div>
+    <div class="bld-section">
+      <div class="bld-section-label">Buildings</div>
+      <div id="bld-list"></div>
+      <div id="bld-bar" class="bld-bar" style="display:none"></div>
+    </div>
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" data-roles="security,foh" onclick="nav('dashboard',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>Dashboard
+    </div>
+    <div class="nav-item" data-roles="security" onclick="nav('checkin',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>Check-in
+    </div>
+    <div class="nav-item" data-roles="security" onclick="nav('checkout',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 8H2M6 4l-4 4 4 4"/><path d="M13 4v8"/></svg>Check-out
+    </div>
+    <div class="nav-item" data-roles="security,foh" onclick="nav('live',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>Live visitors
+    </div>
+    <div class="nav-section">Records</div>
+    <div class="nav-item" data-roles="security,foh" onclick="nav('log',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M5 6h6M5 9h4"/></svg>Visitor log
+    </div>
+    <div class="nav-item" data-roles="security,foh" onclick="nav('units',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><path d="M6 2v12M2 7h12"/></svg>Units
+    </div>
+    <div class="nav-section">FOH</div>
+    <div class="nav-item foh-highlight" data-roles="foh" onclick="nav('foh',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L10 14H6l-.3-.3A6 6 0 012 8a6 6 0 016-6z"/></svg>FOH entries
+    </div>
+    <div class="nav-section">Insights</div>
+    <div class="nav-item" data-roles="security,foh" onclick="nav('reports',this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 14V6l4-4h8v12H2z"/><path d="M5 9h6M5 11h4"/></svg>Reports
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div><div class="page-title">Dashboard</div><div class="page-sub" id="dash-sub">Today</div></div>
+        <div class="btn-row">
+          <input type="date" id="dash-date" style="width:155px" onchange="updateDash()"/>
+          <button class="btn btn-primary sec-only" onclick="nav('checkin',document.querySelector('[onclick*=checkin]'))">+ Check-in</button>
+          <button class="btn btn-success sec-only" onclick="nav('checkout',document.querySelector('[onclick*=checkout]'))">Check-out</button>
+        </div>
+      </div>
+      <div class="ctx-bar" id="dash-ctx"></div>
+      <div class="cards-row">
+        <div class="metric-card"><div class="metric-label">Visits on date</div><div class="metric-value" id="d-visits">0</div></div>
+        <div class="metric-card"><div class="metric-label">Inside now</div><div class="metric-value" id="d-inside">0</div></div>
+        <div class="metric-card"><div class="metric-label">Unique units</div><div class="metric-value" id="d-units">0</div></div>
+        <div class="metric-card"><div class="metric-label">FOH entries</div><div class="metric-value" id="d-foh">0</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div class="card-title">By category</div><div class="chart-wrap"><canvas id="catChart"></canvas></div></div>
+        <div class="card"><div class="card-title">Hourly breakdown</div><div class="chart-wrap"><canvas id="hourlyChart"></canvas></div></div>
+      </div>
+      <div class="card"><div class="card-title">Visits on selected date</div>
+        <table><thead><tr><th>Visitor</th><th>Company</th><th>Building</th><th>Unit</th><th>Category</th><th>In</th><th>Out</th><th>Status</th></tr></thead>
+        <tbody id="dash-tbody"></tbody></table>
+        <div id="dash-empty" style="text-align:center;padding:20px;color:var(--text3);font-size:13px;display:none">No visits on this date.</div>
+      </div>
+    </div>
+
+    <!-- CHECK-IN -->
+    <div class="page sec-page" id="page-checkin">
+      <div class="page-header"><div><div class="page-title">New check-in</div></div></div>
+      <div class="ctx-bar" id="ci-ctx"></div>
+      <div class="card" style="max-width:580px">
+        <div class="form-grid">
+          <div class="form-group"><label>Visitor name *</label><input id="ci-name" placeholder="Full name"/></div>
+          <div class="form-group"><label>Company *</label>
+            <div class="combo-wrap">
+              <input id="ci-co" placeholder="Type or select company..." autocomplete="off"
+                oninput="filterCombo('ci-co','ci-co-dd',companies)"
+                onfocus="openCombo('ci-co','ci-co-dd',companies)"
+                onblur="closeCombo('ci-co-dd')"/>
+              <div class="combo-dd" id="ci-co-dd"></div>
+            </div>
+          </div>
+          <div class="form-group" id="ci-bld-group"><label>Building *</label>
+            <select id="ci-bld" onchange="onCIBldChange()"><option value="">Select building</option></select>
+          </div>
+          <div class="form-group"><label>Category *</label>
+            <select id="ci-cat"><option value="">Select category</option><option>Delivery</option><option>Cleaning</option><option>Maintenance</option><option>Fit-out</option><option>Snagging</option><option>Contractor</option><option>Guest</option><option>Other</option></select>
+          </div>
+          <div class="form-group"><label>Unit *</label><input id="ci-unit" placeholder="e.g. A101"/></div>
+          <div class="form-group"><label>Date *</label><input type="date" id="ci-date"/></div>
+          <div class="form-group"><label>Time in</label><input type="time" id="ci-time"/></div>
+          <div class="form-group full"><label>Purpose of visit</label><input id="ci-purpose" placeholder="Brief description"/></div>
+          <div class="form-group"><label>ID / badge ref</label><input id="ci-badge" placeholder="Optional"/></div>
+          <div class="form-group"><label>Contact number</label><input id="ci-phone" placeholder="Optional"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn" onclick="clearCIForm()">Clear</button>
+          <button class="btn btn-primary" onclick="doCheckIn()">Check in visitor</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHECK-OUT -->
+    <div class="page sec-page" id="page-checkout">
+      <div class="page-header"><div><div class="page-title">Check-out</div></div></div>
+      <div class="ctx-bar" id="co-ctx"></div>
+      <div class="filter-bar"><input type="search" id="co-search" placeholder="Search name, unit, company..." oninput="renderCheckout()"/></div>
+      <div class="card"><div id="co-list"></div><div id="co-empty" style="text-align:center;padding:28px;color:var(--text3);font-size:13px;display:none">No visitors inside.</div></div>
+    </div>
+
+    <!-- LIVE -->
+    <div class="page" id="page-live">
+      <div class="page-header"><div><div class="page-title" style="display:flex;align-items:center;gap:9px"><span class="live-pulse"></span>Live visitors</div></div></div>
+      <div class="ctx-bar" id="live-ctx"></div>
+      <div class="filter-bar" id="live-chips">
+        <div class="rchip active" onclick="filterLive('all',this)">All</div>
+        <div class="rchip" onclick="filterLive('Delivery',this)">Deliveries</div>
+        <div class="rchip" onclick="filterLive('Cleaning',this)">Cleaning</div>
+        <div class="rchip" onclick="filterLive('Maintenance',this)">Maintenance</div>
+        <div class="rchip" onclick="filterLive('Fit-out',this)">Fit-out</div>
+        <div class="rchip" onclick="filterLive('Snagging',this)">Snagging</div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>Visitor</th><th>Company</th><th>Building</th><th>Unit</th><th>Category</th><th>Date</th><th>In</th><th>Duration</th><th class="sec-only">Action</th></tr></thead>
+        <tbody id="live-tbody"></tbody></table>
+        <div id="live-empty" style="text-align:center;padding:28px;color:var(--text3);font-size:13px;display:none">No visitors currently inside.</div>
+      </div>
+    </div>
+
+    <!-- VISITOR LOG (with Unit Grid tab) -->
+    <div class="page" id="page-log">
+      <div class="page-header">
+        <div><div class="page-title">Visitor log</div></div>
+        <button class="btn" onclick="exportVisitorsExcel()">Export Excel</button>
+      </div>
+      <div class="ctx-bar" id="log-ctx"></div>
+      <div class="tabs">
+        <div class="tab active" id="tab-list" onclick="switchTab('list')">List view</div>
+        <div class="tab grid-highlight" id="tab-grid" onclick="switchTab('grid')">Unit grid</div>
+      </div>
+
+      <!-- LIST -->
+      <div class="tab-pane active" id="pane-list">
+        <div class="filter-bar">
+          <input type="search" id="log-search" placeholder="Search name, company, unit..." oninput="renderLog()"/>
+          <select id="log-bld" onchange="renderLog()"><option value="">All buildings</option></select>
+          <select id="log-cat" onchange="renderLog()"><option value="">All categories</option><option>Delivery</option><option>Cleaning</option><option>Maintenance</option><option>Fit-out</option><option>Snagging</option><option>Contractor</option><option>Guest</option><option>Other</option></select>
+          <select id="log-co" onchange="renderLog()"><option value="">All companies</option></select>
+          <select id="log-status" onchange="renderLog()"><option value="">All statuses</option><option value="in">Inside</option><option value="out">Out</option></select>
+        </div>
+        <div class="date-range-bar">
+          <label>From</label><input type="date" id="log-from" onchange="renderLog()"/>
+          <label>To</label><input type="date" id="log-to" onchange="renderLog()"/>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span class="rchip" onclick="setDR('log-from','log-to','today',event)">Today</span>
+            <span class="rchip" onclick="setDR('log-from','log-to','yesterday',event)">Yesterday</span>
+            <span class="rchip" onclick="setDR('log-from','log-to','week',event)">This week</span>
+            <span class="rchip" onclick="setDR('log-from','log-to','month',event)">This month</span>
+            <span class="rchip active" onclick="setDR('log-from','log-to','all',event)">All time</span>
+          </div>
+        </div>
+        <div class="summary-bar" id="log-summary"></div>
+        <div class="card" style="overflow-x:auto">
+          <table><thead><tr><th>Visitor</th><th>Company</th><th>Building</th><th>Unit</th><th>Category</th><th>Purpose</th><th>Date</th><th>In</th><th>Out</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody id="log-tbody"></tbody></table>
+          <div id="log-empty" style="text-align:center;padding:20px;color:var(--text3);font-size:13px;display:none">No records match.</div>
+        </div>
+      </div>
+
+      <!-- UNIT GRID TAB -->
+      <div class="tab-pane" id="pane-grid">
+        <div class="grid-accent-label">★ Unit grid — live company activity map</div>
+        <div class="flag-row">
+          <span class="flag-label">Flagged companies:</span>
+          <div id="flag-tags"></div>
+          <input class="flag-input" id="flag-input" placeholder="Add company name..." onkeydown="if(event.key==='Enter')addFlag()"/>
+          <button class="btn btn-sm" onclick="addFlag()" style="background:var(--red-bg);color:var(--red);border-color:var(--red-border)">+ Flag</button>
+        </div>
+        <div class="grid-toolbar">
+          <div style="display:flex;gap:5px">
+            <span class="rchip active" id="grc-today" onclick="setGridMode('today')">Today</span>
+            <span class="rchip" id="grc-live" onclick="setGridMode('live')">Live now</span>
+            <span class="rchip" id="grc-pick" onclick="setGridMode('pick')">Pick date</span>
+          </div>
+          <input type="date" id="grid-date" style="display:none;width:148px" onchange="renderGrid()"/>
+          <div class="grid-legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--red-bg);border:2px solid var(--red)"></div>Flagged company ever visited</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--amber-bg);border:2px solid var(--amber)"></div>Flagged + others today</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--green-bg);border:1px solid #166534"></div>Other companies</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--bg3);border:1px solid var(--border)"></div>No visits</div>
+          </div>
+        </div>
+        <!-- Building tabs for grid -->
+        <div class="bld-tabs" id="grid-bld-tabs"></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+          <button class="btn btn-sm" onclick="document.getElementById('grid-import').click()">Import Excel</button>
+          <input type="file" id="grid-import" accept=".xlsx,.xls,.csv" style="display:none" onchange="importUnitsExcel(event)"/>
+          <button class="btn btn-sm" onclick="exportUnitsExcel()">Export Excel</button>
+          <span style="font-size:12px;color:var(--text3);margin-left:4px">Template: unit, status, resident, type, since</span>
+        </div>
+        <div class="grid-summary" id="grid-summary"></div>
+        <div class="unit-grid" id="unit-grid"></div>
+      </div>
+    </div>
+
+    <!-- UNITS LIST -->
+    <div class="page" id="page-units">
+      <div class="page-header"><div><div class="page-title">Unit tracker</div><div class="page-sub">Click a unit to open its full profile</div></div></div>
+      <div class="ctx-bar" id="units-ctx"></div>
+      <div class="filter-bar">
+        <input type="search" id="unit-search" placeholder="Search unit..." oninput="renderUnits()" style="max-width:220px"/>
+        <select id="unit-bld" onchange="renderUnits()"><option value="">All buildings</option></select>
+      </div>
+      <div class="card" style="overflow-x:auto">
+        <table><thead><tr><th>Unit</th><th>Building</th><th>Resident</th><th>Type</th><th>Total visits</th><th>Inside now</th><th>Last visit</th><th>Top category</th><th>Activity</th><th></th></tr></thead>
+        <tbody id="units-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- UNIT PROFILE -->
+    <div class="page" id="page-unit-profile">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2);margin-bottom:18px;width:fit-content" onclick="nav('units',document.querySelector('[onclick*=units]'))">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 12L6 8l4-4"/></svg>Back to units
+      </div>
+      <div class="prof-header">
+        <div class="prof-avatar" id="prof-av">A1</div>
+        <div class="prof-meta">
+          <div class="prof-unit" id="prof-title">Unit A101</div>
+          <div class="prof-badges" id="prof-badges"></div>
+          <div class="prof-stats">
+            <div class="prof-stat"><strong id="prof-total">0</strong><br>Total visits</div>
+            <div class="prof-stat"><strong id="prof-active">0</strong><br>Inside now</div>
+            <div class="prof-stat"><strong id="prof-last">—</strong><br>Last visit</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-sm" onclick="editResident()">Edit resident</button>
+          <button class="btn btn-primary btn-sm sec-only" onclick="ciFromUnit()">+ Check in here</button>
+          <button class="btn btn-sm foh-only" onclick="fohFromUnit()">+ FOH entry</button>
+          <button class="btn btn-sm" onclick="exportUnitExcel()">Export Excel</button>
+          <button class="btn btn-sm" onclick="document.getElementById('unit-import').click()">Import Excel</button>
+          <input type="file" id="unit-import" accept=".xlsx,.xls,.csv" style="display:none" onchange="importUnitData(event)"/>
+        </div>
+      </div>
+
+      <!-- RESIDENT INFO -->
+      <div class="res-section" id="res-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:13px;font-weight:500;color:var(--text)">Resident information</span>
+          <button class="res-edit-btn" onclick="editResident()">Edit</button>
+        </div>
+        <div class="res-grid" id="res-grid"></div>
+      </div>
+
+      <div class="prof-cats" id="prof-cats"></div>
+
+      <!-- UNIT TABS -->
+      <div class="tabs" style="margin-bottom:14px">
+        <div class="tab active" id="utab-visits" onclick="switchUnitTab('visits')">Visit history</div>
+        <div class="tab" id="utab-foh" onclick="switchUnitTab('foh')">FOH notes & calls <span id="utab-foh-count" style="display:inline-block;margin-left:4px;padding:1px 6px;background:rgba(245,158,11,.2);color:#fcd34d;border-radius:20px;font-size:10px;font-weight:600"></span></div>
+      </div>
+      <div class="tab-pane active" id="upane-visits">
+        <div class="filter-bar">
+          <input type="date" id="prof-from" onchange="renderProfVisitors()" style="width:145px"/>
+          <span style="font-size:12px;color:var(--text2)">to</span>
+          <input type="date" id="prof-to" onchange="renderProfVisitors()" style="width:145px"/>
+          <select id="prof-cat" onchange="renderProfVisitors()" style="min-width:130px"><option value="">All categories</option><option>Delivery</option><option>Cleaning</option><option>Maintenance</option><option>Fit-out</option><option>Snagging</option><option>Contractor</option><option>Guest</option><option>Other</option></select>
+          <select id="prof-status" onchange="renderProfVisitors()" style="min-width:120px"><option value="">All statuses</option><option value="in">Inside</option><option value="out">Out</option></select>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table><thead><tr><th>Visitor</th><th>Company</th><th>Category</th><th>Purpose</th><th>Date</th><th>In</th><th>Out</th><th>Duration</th><th>Status</th></tr></thead>
+          <tbody id="prof-tbody"></tbody></table>
+          <div id="prof-empty" style="text-align:center;padding:20px;color:var(--text3);font-size:13px;display:none">No visitors match filters.</div>
+        </div>
+      </div>
+      <div class="tab-pane" id="upane-foh">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button class="btn btn-sm btn-primary" onclick="fohFromUnit()">+ Add entry</button>
+        </div>
+        <div id="upane-foh-list"></div>
+        <div id="upane-foh-empty" style="text-align:center;padding:24px;color:var(--text3);font-size:13px;display:none">No FOH entries for this unit yet.</div>
+      </div>
+    </div>
+
+    <!-- FOH ENTRIES -->
+    <div class="page" id="page-foh">
+      <div class="page-header"><div><div class="page-title">FOH entries</div></div><button class="btn btn-primary" onclick="openFohModal()">+ New entry</button></div>
+      <div class="foh-accent-bar">⚡ Front of house team — log leads, calls, opportunities and observations here</div>
+      <div class="ctx-bar" id="foh-ctx"></div>
+      <div class="filter-bar">
+        <input type="search" id="foh-search" placeholder="Search..." oninput="renderFoh()"/>
+        <select id="foh-type" onchange="renderFoh()"><option value="">All types</option><option>Lead</option><option>Opportunity</option><option>Call</option><option>Complaint</option><option>Observation</option><option>General note</option></select>
+        <select id="foh-status" onchange="renderFoh()"><option value="">All statuses</option><option>Hot</option><option>Warm</option><option>Cold</option><option>Closed</option></select>
+      </div>
+      <div id="foh-list"></div>
+      <div id="foh-empty" style="text-align:center;padding:32px;color:var(--text3);font-size:13px;display:none">No entries yet.</div>
+    </div>
+
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="page-header">
+        <div><div class="page-title">Reports</div><div class="page-sub" id="rep-sub">This month</div></div>
+        <div class="btn-row">
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span class="rchip" id="rc-today" onclick="setRepRange('today')">Today</span>
+            <span class="rchip" id="rc-week" onclick="setRepRange('week')">This week</span>
+            <span class="rchip active" id="rc-month" onclick="setRepRange('month')">This month</span>
+            <span class="rchip" id="rc-all" onclick="setRepRange('all')">All time</span>
+          </div>
+          <input type="date" id="rep-from" onchange="setRepRange('custom')" style="width:148px"/>
+          <input type="date" id="rep-to" onchange="setRepRange('custom')" style="width:148px"/>
+        </div>
+      </div>
+      <div class="ctx-bar" id="rep-ctx"></div>
+      <div class="summary-bar" id="rep-summary"></div>
+      <div class="cards-row">
+        <div class="metric-card"><div class="metric-label">Total visits</div><div class="metric-value" id="rep-total">0</div></div>
+        <div class="metric-card"><div class="metric-label">Unique companies</div><div class="metric-value" id="rep-co">0</div></div>
+        <div class="metric-card"><div class="metric-label">Active units</div><div class="metric-value" id="rep-units">0</div></div>
+        <div class="metric-card"><div class="metric-label">Avg per day</div><div class="metric-value" id="rep-avg">0</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div class="card-title">By category</div><div class="chart-wrap"><canvas id="repCatChart"></canvas></div></div>
+        <div class="card"><div class="card-title">Top units</div><div id="top-units" style="margin-top:4px"></div></div>
+      </div>
+      <div class="card"><div class="card-title">Visits over time</div><div class="chart-wrap" style="height:190px"><canvas id="trendChart"></canvas></div></div>
+    </div>
+
+  </div><!-- content -->
+</div><!-- app -->
+
+<!-- FOH MODAL -->
+<div class="modal-bg" id="foh-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">New FOH entry</div><button class="close-btn" onclick="closeFohModal()">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Unit *</label><input id="fm-unit" placeholder="e.g. A101"/></div>
+      <div class="form-group"><label>Type *</label><select id="fm-type"><option value="">Select</option><option>Lead</option><option>Opportunity</option><option>Call</option><option>Complaint</option><option>Observation</option><option>General note</option></select></div>
+      <div class="form-group"><label>Status</label><select id="fm-status"><option value="">None</option><option>Hot</option><option>Warm</option><option>Cold</option><option>Closed</option></select></div>
+      <div class="form-group"><label>Related visitor / company</label><input id="fm-visitor" placeholder="Optional"/></div>
+      <div class="form-group full"><label>Entry / notes *</label><textarea id="fm-note" placeholder="Describe the lead, call, opportunity or observation..."></textarea></div>
+      <div class="form-group"><label>Entered by</label><input id="fm-by" placeholder="Your name"/></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="closeFohModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFoh()">Save entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESIDENT EDIT MODAL -->
+<div class="modal-bg" id="res-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="res-modal-title">Edit resident info</div><button class="close-btn" onclick="document.getElementById('res-modal').style.display='none'">×</button></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Resident name</label><input id="rm-name" placeholder="Full name"/></div>
+      <div class="form-group"><label>Type</label><select id="rm-type"><option>Owner</option><option>Tenant</option><option>Vacant</option></select></div>
+      <div class="form-group"><label>Phone</label><input id="rm-phone" placeholder="Contact number"/></div>
+      <div class="form-group"><label>Email</label><input id="rm-email" placeholder="Email address"/></div>
+      <div class="form-group"><label>Nationality</label><input id="rm-nat" placeholder="Nationality"/></div>
+      <div class="form-group"><label>Tenant since</label><input type="date" id="rm-since"/></div>
+      <div class="form-group full"><label>Notes</label><textarea id="rm-notes" placeholder="Additional notes about this unit or resident..."></textarea></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn" onclick="document.getElementById('res-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" onclick="saveResident()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- UNIT GRID TOOLTIP -->
+<div class="tp" id="tp">
+  <div class="tp-title"><span id="tp-title">Unit</span><button class="tp-close" onclick="document.getElementById('tp').style.display='none'">×</button></div>
+  <div id="tp-body"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const TODAY='2026-03-17';
+let role='security';
+let selectedBlds=new Set(['b1']);
+let liveFilter='all';
+let gridMode='today';
+let gridBld='b1';
+let flaggedCos=['Candoo'];
+let currentUnit=null,currentBld=null;
+let catCI=null,hourlyCI=null,repCatCI=null,trendCI=null;
+let nextId=66,nextFohId=12;
+let fohModalUnit=null,fohModalBld=null;
+
+const BUILDINGS=[
+  {id:'b1',name:'Harbour Residences'},
+  {id:'b2',name:'Marina Tower'},
+  {id:'b3',name:'Skyline Plaza'},
+];
+
+// Generate units
+const ALL_UNITS={};
+BUILDINGS.forEach((b,i)=>{
+  const counts=[150,100,50];
+  const pfx=['HR-','MT-','SP-'];
+  ALL_UNITS[b.id]=[];
+  for(let n=1;n<=counts[i];n++)ALL_UNITS[b.id].push(pfx[i]+(n<10?'0':'')+n);
+});
+
+let companies=['Swift Deliveries','CleanPro Services','TechFix Ltd','FitOut Pro','Snag Solutions','ElectroPro','Candoo','JM Contractors','Gulf Cleaning Co','Prestige Deliveries'];
+
+// Unit resident data: key = bld|unit
+let residents={
+  'b1|HR-01':{name:'Mohammed Al Farsi',type:'Owner',phone:'+971 50 123 4567',email:'m.alfarsi@email.com',nat:'Emirati',since:'',notes:'VIP resident, prefers email communication'},
+  'b1|HR-04':{name:'Sarah Thompson',type:'Tenant',phone:'+971 55 987 6543',email:'s.thompson@email.com',nat:'British',since:'2024-06-01',notes:''},
+  'b1|HR-10':{name:'Raj Patel',type:'Tenant',phone:'+971 52 456 7890',email:'r.patel@email.com',nat:'Indian',since:'2023-09-15',notes:'Undergoing fit-out'},
+  'b2|MT-05':{name:'Li Wei',type:'Owner',phone:'+971 56 321 0987',email:'liwei@email.com',nat:'Chinese',since:'',notes:''},
+  'b2|MT-03':{name:'Anna Kowalski',type:'Tenant',phone:'+971 54 654 3210',email:'a.kowalski@email.com',nat:'Polish',since:'2025-01-10',notes:''},
+};
+
+let visitors=[
+  // ── Harbour Residences (b1) ── today ──
+  {id:1,name:"Ahmed Al-Rashid",company:"Swift Deliveries",building:'b1',unit:"HR-04",cat:"Delivery",purpose:"Package delivery",checkin:"08:15",checkout:"08:22",date:"2026-03-17",status:"out",duration:"7m"},
+  {id:2,name:"Maria Santos",company:"CleanPro Services",building:'b1',unit:"HR-01",cat:"Cleaning",purpose:"Weekly clean",checkin:"09:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:3,name:"Yusuf Hamed",company:"Candoo",building:'b1',unit:"HR-10",cat:"Contractor",purpose:"Survey",checkin:"09:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:4,name:"Elena Kovac",company:"FitOut Pro",building:'b1',unit:"HR-10",cat:"Fit-out",purpose:"Flooring",checkin:"07:45",checkout:"11:30",date:"2026-03-17",status:"out",duration:"3h 45m"},
+  {id:5,name:"Lina Haddad",company:"Candoo",building:'b1',unit:"HR-01",cat:"Cleaning",purpose:"Deep clean",checkin:"14:00",checkout:"16:30",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  {id:6,name:"Sara Ali",company:"ElectroPro",building:'b1',unit:"HR-04",cat:"Maintenance",purpose:"Electrical",checkin:"11:00",checkout:"12:30",date:"2026-03-17",status:"out",duration:"1h 30m"},
+  {id:7,name:"Priya Nair",company:"TechFix Ltd",building:'b1',unit:"HR-10",cat:"Maintenance",purpose:"HVAC",checkin:"10:00",checkout:"12:00",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:8,name:"Layla Hassan",company:"Swift Deliveries",building:'b1',unit:"HR-04",cat:"Delivery",purpose:"Appliances",checkin:"13:00",checkout:"13:45",date:"2026-03-17",status:"out",duration:"45m"},
+  {id:9,name:"Tariq Saeed",company:"Gulf Cleaning Co",building:'b1',unit:"HR-07",cat:"Cleaning",purpose:"Move-in clean",checkin:"08:30",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:10,name:"Hana Malik",company:"JM Contractors",building:'b1',unit:"HR-15",cat:"Contractor",purpose:"Tiling work",checkin:"07:00",checkout:"16:00",date:"2026-03-17",status:"out",duration:"9h"},
+  {id:11,name:"David Kim",company:"Prestige Deliveries",building:'b1',unit:"HR-22",cat:"Delivery",purpose:"Furniture",checkin:"10:30",checkout:"11:15",date:"2026-03-17",status:"out",duration:"45m"},
+  {id:12,name:"Fatima Al Zaabi",company:"Candoo",building:'b1',unit:"HR-22",cat:"Maintenance",purpose:"AC service",checkin:"12:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:13,name:"Mike Brennan",company:"Snag Solutions",building:'b1',unit:"HR-33",cat:"Snagging",purpose:"Pre-handover snag",checkin:"09:15",checkout:"11:45",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  {id:14,name:"Reem Al Hashimi",company:"CleanPro Services",building:'b1',unit:"HR-33",cat:"Cleaning",purpose:"Deep clean",checkin:"13:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:15,name:"John Park",company:"TechFix Ltd",building:'b1',unit:"HR-45",cat:"Maintenance",purpose:"Intercom repair",checkin:"08:00",checkout:"09:00",date:"2026-03-17",status:"out",duration:"1h"},
+  {id:16,name:"Nour Badr",company:"FitOut Pro",building:'b1',unit:"HR-45",cat:"Fit-out",purpose:"Wardrobes",checkin:"09:30",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:17,name:"Ali Hassan",company:"Gulf Cleaning Co",building:'b1',unit:"HR-58",cat:"Cleaning",purpose:"Standard clean",checkin:"07:30",checkout:"10:00",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  {id:18,name:"Sana Qureshi",company:"Snag Solutions",building:'b1',unit:"HR-62",cat:"Snagging",purpose:"Window defect",checkin:"11:00",checkout:"12:30",date:"2026-03-17",status:"out",duration:"1h 30m"},
+  {id:19,name:"George Petrov",company:"JM Contractors",building:'b1',unit:"HR-71",cat:"Contractor",purpose:"Painting",checkin:"07:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:20,name:"Aisha Mubarak",company:"Candoo",building:'b1',unit:"HR-71",cat:"Contractor",purpose:"Inspection",checkin:"10:00",checkout:"11:00",date:"2026-03-17",status:"out",duration:"1h"},
+  {id:21,name:"Kevin Mwangi",company:"ElectroPro",building:'b1',unit:"HR-80",cat:"Maintenance",purpose:"Lights circuit",checkin:"09:00",checkout:"10:30",date:"2026-03-17",status:"out",duration:"1h 30m"},
+  {id:22,name:"Dina Khalil",company:"Swift Deliveries",building:'b1',unit:"HR-88",cat:"Delivery",purpose:"White goods",checkin:"08:45",checkout:"09:30",date:"2026-03-17",status:"out",duration:"45m"},
+  {id:23,name:"Omar Farhat",company:"FitOut Pro",building:'b1',unit:"HR-95",cat:"Fit-out",purpose:"Kitchen install",checkin:"07:30",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:24,name:"Leila Nasser",company:"TechFix Ltd",building:'b1',unit:"HR-102",cat:"Maintenance",purpose:"Water leak fix",checkin:"08:00",checkout:"10:00",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:25,name:"Sam Porter",company:"Prestige Deliveries",building:'b1',unit:"HR-110",cat:"Delivery",purpose:"Boxes",checkin:"14:30",checkout:"15:00",date:"2026-03-17",status:"out",duration:"30m"},
+  {id:26,name:"Hassan Al Ameri",company:"Candoo",building:'b1',unit:"HR-118",cat:"Snagging",purpose:"Tiles snagging",checkin:"09:00",checkout:"10:30",date:"2026-03-17",status:"out",duration:"1h 30m"},
+  {id:27,name:"Anna Cruz",company:"Gulf Cleaning Co",building:'b1',unit:"HR-125",cat:"Cleaning",purpose:"Weekly service",checkin:"10:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:28,name:"Faisal Rashid",company:"JM Contractors",building:'b1',unit:"HR-130",cat:"Contractor",purpose:"Flooring",checkin:"07:00",checkout:"17:00",date:"2026-03-17",status:"out",duration:"10h"},
+  {id:29,name:"Zara Ali",company:"CleanPro Services",building:'b1',unit:"HR-140",cat:"Cleaning",purpose:"Move-out clean",checkin:"11:30",checkout:"14:00",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  // b1 historical (red-frame units — Candoo visited before)
+  {id:30,name:"Candoo Tech",company:"Candoo",building:'b1',unit:"HR-55",cat:"Maintenance",purpose:"AC install",checkin:"09:00",checkout:"17:00",date:"2026-03-10",status:"out",duration:"8h"},
+  {id:31,name:"Candoo Tech",company:"Candoo",building:'b1',unit:"HR-77",cat:"Contractor",purpose:"Survey",checkin:"10:00",checkout:"12:00",date:"2026-03-05",status:"out",duration:"2h"},
+  {id:32,name:"Candoo Rep",company:"Candoo",building:'b1',unit:"HR-90",cat:"Maintenance",purpose:"Water heater",checkin:"08:00",checkout:"10:00",date:"2026-02-28",status:"out",duration:"2h"},
+  {id:33,name:"Candoo Rep",company:"Candoo",building:'b1',unit:"HR-112",cat:"Contractor",purpose:"Fit-out supervision",checkin:"07:30",checkout:"15:00",date:"2026-02-20",status:"out",duration:"7h 30m"},
+  {id:34,name:"Paul Nkosi",company:"FitOut Pro",building:'b1',unit:"HR-10",cat:"Fit-out",purpose:"Kitchen install",checkin:"07:30",checkout:"15:00",date:"2026-03-16",status:"out",duration:"7h 30m"},
+  {id:35,name:"Tariq Saeed",company:"CleanPro Services",building:'b1',unit:"HR-07",cat:"Cleaning",purpose:"Weekly",checkin:"08:00",checkout:"10:00",date:"2026-03-16",status:"out",duration:"2h"},
+  {id:36,name:"Nina Rossi",company:"Snag Solutions",building:'b1',unit:"HR-33",cat:"Snagging",purpose:"Follow-up snag",checkin:"09:00",checkout:"10:30",date:"2026-03-16",status:"out",duration:"1h 30m"},
+  // ── Marina Tower (b2) ── today ──
+  {id:37,name:"James Okafor",company:"Candoo",building:'b2',unit:"MT-05",cat:"Maintenance",purpose:"AC repair",checkin:"09:30",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:38,name:"Tom Bradley",company:"Snag Solutions",building:'b2',unit:"MT-03",cat:"Snagging",purpose:"Inspection",checkin:"10:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:39,name:"Carlos Mendes",company:"Swift Deliveries",building:'b2',unit:"MT-12",cat:"Delivery",purpose:"Parcel",checkin:"08:30",checkout:"09:00",date:"2026-03-17",status:"out",duration:"30m"},
+  {id:40,name:"Mia Chen",company:"CleanPro Services",building:'b2',unit:"MT-20",cat:"Cleaning",purpose:"Weekly clean",checkin:"09:00",checkout:"11:30",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  {id:41,name:"Roberto Silva",company:"TechFix Ltd",building:'b2',unit:"MT-28",cat:"Maintenance",purpose:"Boiler service",checkin:"10:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:42,name:"Fatima Zahra",company:"Candoo",building:'b2',unit:"MT-35",cat:"Contractor",purpose:"Quality check",checkin:"11:00",checkout:"13:00",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:43,name:"David Park",company:"ElectroPro",building:'b2',unit:"MT-42",cat:"Maintenance",purpose:"DB upgrade",checkin:"07:30",checkout:"12:00",date:"2026-03-17",status:"out",duration:"4h 30m"},
+  {id:44,name:"Aisha Karim",company:"Gulf Cleaning Co",building:'b2',unit:"MT-50",cat:"Cleaning",purpose:"Deep clean",checkin:"08:00",checkout:"10:30",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  {id:45,name:"Luke Evans",company:"FitOut Pro",building:'b2',unit:"MT-58",cat:"Fit-out",purpose:"Carpeting",checkin:"07:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:46,name:"Hind Al Maktoum",company:"Candoo",building:'b2',unit:"MT-65",cat:"Maintenance",purpose:"Plumbing",checkin:"09:00",checkout:"11:00",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:47,name:"Rania Farouk",company:"Snag Solutions",building:'b2',unit:"MT-05",cat:"Snagging",purpose:"Window snagging",checkin:"08:00",checkout:"09:30",date:"2026-03-14",status:"out",duration:"1h 30m"},
+  {id:48,name:"Nina Rossi",company:"TechFix Ltd",building:'b2',unit:"MT-07",cat:"Maintenance",purpose:"Plumbing",checkin:"10:00",checkout:"11:30",date:"2026-03-17",status:"out",duration:"1h 30m"},
+  {id:49,name:"Alex Wong",company:"JM Contractors",building:'b2',unit:"MT-72",cat:"Contractor",purpose:"Ceiling work",checkin:"07:00",checkout:"16:00",date:"2026-03-17",status:"out",duration:"9h"},
+  {id:50,name:"Sara Petersen",company:"Prestige Deliveries",building:'b2',unit:"MT-80",cat:"Delivery",purpose:"Large parcel",checkin:"11:00",checkout:"11:30",date:"2026-03-17",status:"out",duration:"30m"},
+  {id:51,name:"Yousef Al Rais",company:"Candoo",building:'b2',unit:"MT-88",cat:"Maintenance",purpose:"Leak check",checkin:"13:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  // b2 Candoo historical (red frame)
+  {id:52,name:"Candoo Tech",company:"Candoo",building:'b2',unit:"MT-15",cat:"Maintenance",purpose:"AC",checkin:"09:00",checkout:"12:00",date:"2026-03-08",status:"out",duration:"3h"},
+  {id:53,name:"Candoo Tech",company:"Candoo",building:'b2',unit:"MT-30",cat:"Contractor",purpose:"Survey",checkin:"10:00",checkout:"11:00",date:"2026-03-03",status:"out",duration:"1h"},
+  {id:54,name:"Candoo Rep",company:"Candoo",building:'b2',unit:"MT-55",cat:"Maintenance",purpose:"Inspection",checkin:"08:00",checkout:"10:00",date:"2026-02-25",status:"out",duration:"2h"},
+  // ── Skyline Plaza (b3) ── today ──
+  {id:55,name:"Omar Farhat",company:"Candoo",building:'b3',unit:"SP-01",cat:"Fit-out",purpose:"Survey",checkin:"08:00",checkout:"17:00",date:"2026-03-16",status:"out",duration:"9h"},
+  {id:56,name:"Maya Johansson",company:"CleanPro Services",building:'b3',unit:"SP-03",cat:"Cleaning",purpose:"Regular clean",checkin:"09:00",checkout:"11:00",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:57,name:"Tariq Bin Laden",company:"Swift Deliveries",building:'b3',unit:"SP-08",cat:"Delivery",purpose:"Sofa delivery",checkin:"10:00",checkout:"11:00",date:"2026-03-17",status:"out",duration:"1h"},
+  {id:58,name:"Nadia Farouk",company:"FitOut Pro",building:'b3',unit:"SP-12",cat:"Fit-out",purpose:"Bathroom tiles",checkin:"07:30",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:59,name:"Ben Carter",company:"TechFix Ltd",building:'b3',unit:"SP-18",cat:"Maintenance",purpose:"Smart locks",checkin:"10:00",checkout:"12:00",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:60,name:"Lola Okonkwo",company:"Candoo",building:'b3',unit:"SP-22",cat:"Contractor",purpose:"Snag fix",checkin:"11:00",checkout:null,date:"2026-03-17",status:"in",duration:""},
+  {id:61,name:"Steve Malik",company:"Snag Solutions",building:'b3',unit:"SP-30",cat:"Snagging",purpose:"Punch list",checkin:"08:30",checkout:"10:30",date:"2026-03-17",status:"out",duration:"2h"},
+  {id:62,name:"Diana Haddad",company:"Gulf Cleaning Co",building:'b3',unit:"SP-38",cat:"Cleaning",purpose:"Deep clean",checkin:"09:30",checkout:"12:30",date:"2026-03-17",status:"out",duration:"3h"},
+  {id:63,name:"Ramzi Al Qasim",company:"Candoo",building:'b3',unit:"SP-45",cat:"Maintenance",purpose:"AC unit",checkin:"09:00",checkout:"11:30",date:"2026-03-17",status:"out",duration:"2h 30m"},
+  // b3 historical
+  {id:64,name:"Candoo Rep",company:"Candoo",building:'b3',unit:"SP-10",cat:"Maintenance",purpose:"Check",checkin:"09:00",checkout:"11:00",date:"2026-03-09",status:"out",duration:"2h"},
+  {id:65,name:"Carlos Mendes",company:"Swift Deliveries",building:'b3',unit:"SP-02",cat:"Delivery",purpose:"Furniture",checkin:"10:15",checkout:"10:45",date:"2026-03-15",status:"out",duration:"30m"},
+];
+
+let fohEntries=[
+  {id:1,unit:"HR-01",building:'b1',type:"Opportunity",status:"Hot",visitor:"CleanPro Services",note:"Resident Mohammed interested in premium cleaning package. Also looking for interior design referrals.",by:"Sarah K.",date:"2026-03-17",time:"10:30"},
+  {id:2,unit:"HR-10",building:'b1',type:"Call",status:"Warm",visitor:"Candoo",note:"Called resident Raj regarding ongoing fit-out. Expressed interest in property management upgrade. Follow up next week.",by:"Marcus T.",date:"2026-03-16",time:"15:00"},
+  {id:3,unit:"HR-04",building:'b1',type:"Lead",status:"Hot",visitor:"",note:"Resident Sarah asked about concierge storage after multiple deliveries this week. Strong interest — send brochure.",by:"Sarah K.",date:"2026-03-15",time:"09:45"},
+  {id:4,unit:"MT-05",building:'b2',type:"Observation",status:"",visitor:"Candoo",note:"Candoo visited MT-05 for the 3rd time this month. Possible recurring maintenance contract — worth flagging to management.",by:"Marcus T.",date:"2026-03-17",time:"11:00"},
+  {id:5,unit:"HR-22",building:'b1',type:"Lead",status:"Hot",visitor:"Candoo",note:"Resident mentioned unit needs full AC overhaul. Candoo quoted AED 8,500. Resident open to alternatives — opportunity for preferred vendor list.",by:"Sarah K.",date:"2026-03-17",time:"13:00"},
+  {id:6,unit:"HR-33",building:'b1',type:"Opportunity",status:"Warm",visitor:"CleanPro Services",note:"Unit HR-33 newly handed over. Resident interested in monthly cleaning contract. Follow up with CleanPro pricing.",by:"Marcus T.",date:"2026-03-17",time:"14:30"},
+  {id:7,unit:"MT-35",building:'b2',type:"Complaint",status:"",visitor:"Candoo",note:"Resident complained Candoo team left debris in corridor after yesterday's visit. Informed building manager. Letter to be issued.",by:"Sarah K.",date:"2026-03-17",time:"09:00"},
+  {id:8,unit:"SP-22",building:'b3',type:"Lead",status:"Hot",visitor:"Candoo",note:"Candoo contractor mentioned SP-22 owner is looking to sell the unit. Referred to our property advisory team.",by:"Marcus T.",date:"2026-03-17",time:"12:00"},
+  {id:9,unit:"HR-71",building:'b1',type:"Call",status:"Warm",visitor:"JM Contractors",note:"Called resident about ongoing painting works in HR-71. Confirmed completion by 20 March. Resident happy.",by:"Sarah K.",date:"2026-03-16",time:"10:00"},
+  {id:10,unit:"MT-65",building:'b2',type:"Observation",status:"",visitor:"Candoo",note:"Second Candoo visit to MT-65 within 3 days. Plumbing issue appears persistent — recommend escalating to building engineer.",by:"Marcus T.",date:"2026-03-17",time:"11:30"},
+  {id:11,unit:"HR-95",building:'b1',type:"Opportunity",status:"Hot",visitor:"FitOut Pro",note:"FitOut Pro contractor mentioned HR-95 resident has budget for full kitchen upgrade. Strong revenue opportunity.",by:"Sarah K.",date:"2026-03-17",time:"08:30"},
+];
+
+// ─── HELPERS ───────────────────────────────────────────────────────
+function bldName(id){return BUILDINGS.find(b=>b.id===id)?.name||id;}
+function nowTime(){const n=new Date();return n.getHours().toString().padStart(2,'0')+':'+n.getMinutes().toString().padStart(2,'0');}
+function fmt(s){if(!s)return'—';const[y,m,d]=s.split('-');return d+'/'+m+'/'+y;}
+function addDays(d,n){const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+n);return dt.toISOString().slice(0,10);}
+function soW(d){const dt=new Date(d+'T00:00:00');const day=dt.getDay()||7;dt.setDate(dt.getDate()-day+1);return dt.toISOString().slice(0,10);}
+function soM(d){return d.slice(0,7)+'-01';}
+function catBadge(c){return`<span class="badge badge-${(c||'Other').replace(/[\s-]/g,'')}">${c}</span>`;}
+function sbadge(s){if(!s)return'';return`<span class="badge badge-${s.toLowerCase()}">${s}</span>`;}
+function dur(ci){const d=Math.floor((new Date('2026-03-17T'+nowTime())-new Date('2026-03-17T'+ci))/60000);if(d<1)return'<1m';if(d<60)return d+'m';return Math.floor(d/60)+'h'+(d%60)+'m';}
+function isAll(){return selectedBlds.size===0||selectedBlds.size===BUILDINGS.length;}
+function fv(arr){if(isAll())return arr;return arr.filter(v=>selectedBlds.has(v.building));}
+function ff(arr){if(isAll())return arr;return arr.filter(e=>selectedBlds.has(e.building));}
+function isFlagged(co){return flaggedCos.some(f=>f&&co.toLowerCase().includes(f.toLowerCase()));}
+function coColor(co){const cc=['#3b82f6','#22c55e','#a78bfa','#f472b6','#60a5fa','#34d399','#fbbf24','#9ca3af'];let h=0;for(let i=0;i<co.length;i++)h=(h*31+co.charCodeAt(i))&0xffff;return cc[h%cc.length];}
+function coInit(c){return c.split(/\s+/).map(w=>w[0]).join('').substring(0,2).toUpperCase();}
+function setDR(fId,tId,r,ev){
+  const f=document.getElementById(fId),t=document.getElementById(tId);if(!f||!t)return;
+  if(r==='today'){f.value=TODAY;t.value=TODAY;}
+  else if(r==='yesterday'){const y=addDays(TODAY,-1);f.value=y;t.value=y;}
+  else if(r==='week'){f.value=soW(TODAY);t.value=TODAY;}
+  else if(r==='month'){f.value=soM(TODAY);t.value=TODAY;}
+  else{f.value='';t.value='';}
+  if(ev){const chips=ev.target.closest('.date-range-bar')?.querySelectorAll('.rchip');if(chips){chips.forEach(c=>c.classList.remove('active'));ev.target.classList.add('active');}}
+}
+function filterDate(arr,fId,tId){const from=document.getElementById(fId)?.value,to=document.getElementById(tId)?.value;return arr.filter(v=>(!from||v.date>=from)&&(!to||v.date<=to));}
+
+// ─── BUILDING SELECTOR ──────────────────────────────────────────────
+function ctxHTML(){
+  if(isAll())return`<span style="color:var(--text3);font-size:12px">All buildings</span>`;
+  return[...selectedBlds].map(id=>`<span class="ctx-tag">${bldName(id)}</span>`).join('');
+}
+function setCtxBars(){
+  const h=ctxHTML();
+  ['dash','ci','co','live','log','units','foh','rep'].forEach(id=>{const el=document.getElementById(id+'-ctx');if(el)el.innerHTML=h;});
+}
+function renderBldSelector(){
+  document.getElementById('bld-list').innerHTML=BUILDINGS.map(b=>`<label class="bld-opt"><input type="checkbox" ${selectedBlds.has(b.id)?'checked':''} onchange="toggleBld('${b.id}',this.checked)"/> ${b.name}</label>`).join('');
+  const bar=document.getElementById('bld-bar');
+  bar.style.display='block';
+  if(isAll())bar.textContent='All buildings';
+  else if(selectedBlds.size===1)bar.textContent=bldName([...selectedBlds][0]);
+  else bar.textContent=selectedBlds.size+' buildings selected';
+  setCtxBars();
+}
+function toggleBld(id,checked){
+  if(checked)selectedBlds.add(id);else selectedBlds.delete(id);
+  try{localStorage.setItem('bos_blds2',JSON.stringify([...selectedBlds]));}catch(e){}
+  renderBldSelector();populateDropdowns();refreshPage();
+}
+function loadBldSel(){try{const s=localStorage.getItem('bos_blds2');if(s)selectedBlds=new Set(JSON.parse(s));}catch(e){}}
+
+// ─── DROPDOWNS ──────────────────────────────────────────────────────
+function populateDropdowns(){
+  const opts=BUILDINGS.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  ['log-bld','unit-bld'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='<option value="">All buildings</option>'+opts;});
+  // CI building: show only selected buildings if 1 selected, else show all
+  const ciBld=document.getElementById('ci-bld');
+  const activeBlds=isAll()?BUILDINGS:BUILDINGS.filter(b=>selectedBlds.has(b.id));
+  ciBld.innerHTML='<option value="">Select building</option>'+activeBlds.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  // Auto-select if only 1 building
+  if(activeBlds.length===1)ciBld.value=activeBlds[0].id;
+  // Show/hide building field based on selection
+  document.getElementById('ci-bld-group').style.display=activeBlds.length>1?'flex':'none';
+  // Grid bld tabs
+  renderGridBldTabs();
+  updateCoFilter();
+}
+function updateCoFilter(){
+  const all=[...new Set(visitors.map(v=>v.company).filter(Boolean))].sort();
+  const sel=document.getElementById('log-co');const cur=sel.value;
+  sel.innerHTML='<option value="">All companies</option>'+all.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+}
+function onCIBldChange(){}
+
+// ─── COMBO ──────────────────────────────────────────────────────────
+function openCombo(iId,dId,list){renderComboOpts(document.getElementById(dId),list,document.getElementById(iId).value.toLowerCase(),iId);document.getElementById(dId).classList.add('open');}
+function filterCombo(iId,dId,list){renderComboOpts(document.getElementById(dId),list,document.getElementById(iId).value.toLowerCase(),iId);document.getElementById(dId).classList.add('open');}
+function renderComboOpts(dd,list,val,iId){
+  const f=val?list.filter(c=>c.toLowerCase().includes(val)):list;
+  const exact=list.some(c=>c.toLowerCase()===val);
+  let h=f.map(c=>`<div class="combo-opt" onmousedown="pickCombo('${iId}','${c.replace(/'/g,"\\'")}')"> ${c}</div>`).join('');
+  if(val&&!exact)h+=`<div class="combo-opt add-new" onmousedown="addCo('${iId}','${val.replace(/'/g,"\\'")}')">+ Add "${val}"</div>`;
+  dd.innerHTML=h||`<div class="combo-opt" style="color:var(--text3)">No matches</div>`;
+}
+function pickCombo(iId,val){document.getElementById(iId).value=val;setTimeout(()=>document.querySelectorAll('.combo-dd').forEach(d=>d.classList.remove('open')),100);}
+function closeCombo(dId){setTimeout(()=>{const el=document.getElementById(dId);if(el)el.classList.remove('open');},200);}
+function addCo(iId,val){const n=val.charAt(0).toUpperCase()+val.slice(1);if(!companies.includes(n))companies.push(n);document.getElementById(iId).value=n;updateCoFilter();setTimeout(()=>document.querySelectorAll('.combo-dd').forEach(d=>d.classList.remove('open')),100);}
+
+// ─── ROLE ────────────────────────────────────────────────────────────
+function setRole(r){
+  role=r;
+  document.getElementById('rbtn-s').className='rbtn'+(r==='security'?' active':'');
+  document.getElementById('rbtn-f').className='rbtn'+(r==='foh'?' active':'');
+  document.querySelectorAll('.nav-item').forEach(el=>{const roles=el.getAttribute('data-roles')||'';el.classList.toggle('hidden',!roles.includes(r));});
+  document.querySelectorAll('.sec-only').forEach(el=>el.style.display=r==='security'?'':'none');
+  document.querySelectorAll('.foh-only').forEach(el=>el.style.display=r==='foh'?'':'none');
+  // always keep foh-highlight on the FOH nav item
+  document.querySelectorAll('.nav-item.foh-highlight').forEach(el=>el.classList.add('foh-highlight'));
+  nav('dashboard',document.querySelector('.nav-item:not(.hidden)'));
+}
+
+// ─── NAV ─────────────────────────────────────────────────────────────
+function nav(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const pg=document.getElementById('page-'+page);if(pg)pg.classList.add('active');
+  if(el)el.classList.add('active');
+  setCtxBars();
+  if(page==='dashboard')updateDash();
+  else if(page==='live')renderLive();
+  else if(page==='log'){renderLog();renderGrid();updateCoFilter();}
+  else if(page==='units')renderUnits();
+  else if(page==='checkout')renderCheckout();
+  else if(page==='foh')renderFoh();
+  else if(page==='reports')renderReports();
+}
+function refreshPage(){const a=document.querySelector('.page.active');if(!a)return;const id=a.id.replace('page-','');nav(id,document.querySelector('.nav-item.active'));}
+
+// ─── TABS ────────────────────────────────────────────────────────────
+function switchTab(t){
+  document.getElementById('tab-list').classList.toggle('active',t==='list');
+  const gridTab=document.getElementById('tab-grid');
+  gridTab.classList.toggle('active',t==='grid');
+  // preserve the amber highlight always
+  gridTab.classList.add('grid-highlight');
+  document.getElementById('pane-list').classList.toggle('active',t==='list');
+  document.getElementById('pane-grid').classList.toggle('active',t==='grid');
+  if(t==='grid')renderGrid();
+}
+function switchUnitTab(t){
+  ['visits','foh'].forEach(x=>{document.getElementById('utab-'+x).classList.toggle('active',x===t);document.getElementById('upane-'+x).classList.toggle('active',x===t);});
+  if(t==='foh')renderUnitFoh();
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────
+function updateDash(){
+  const sel=document.getElementById('dash-date').value||TODAY;
+  const rows=fv(visitors).filter(v=>v.date===sel);
+  const inside=fv(visitors).filter(v=>v.status==='in').length;
+  document.getElementById('d-visits').textContent=rows.length;
+  document.getElementById('d-inside').textContent=inside;
+  document.getElementById('d-units').textContent=new Set(rows.map(v=>v.unit)).size;
+  document.getElementById('d-foh').textContent=ff(fohEntries).length;
+  document.getElementById('dash-sub').textContent=sel===TODAY?'Today — '+fmt(TODAY):'Viewing '+fmt(sel);
+  const tbody=document.getElementById('dash-tbody'),empty=document.getElementById('dash-empty');
+  if(!rows.length){tbody.innerHTML='';empty.style.display='block';}
+  else{
+    empty.style.display='none';
+    tbody.innerHTML=rows.sort((a,b)=>a.checkin.localeCompare(b.checkin)).map(v=>`<tr><td>${v.name}</td><td>${v.company}</td><td style="color:var(--text3);font-size:11px">${bldName(v.building)}</td><td>${v.unit}</td><td>${catBadge(v.cat)}</td><td>${v.checkin}</td><td>${v.checkout||'—'}</td><td><span class="status-dot dot-${v.status}"></span>${v.status==='in'?'Inside':'Out'}</td></tr>`).join('');
+  }
+  const cats=['Delivery','Cleaning','Maintenance','Fit-out','Snagging','Contractor','Guest','Other'];
+  const cc=['#3b82f6','#22c55e','#ef4444','#a78bfa','#f472b6','#60a5fa','#34d399','#6b7280'];
+  if(catCI)catCI.destroy();catCI=new Chart(document.getElementById('catChart'),{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(c=>rows.filter(v=>v.cat===c).length),backgroundColor:cc,borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  const hrs=Array.from({length:13},(_,i)=>i+7);
+  if(hourlyCI)hourlyCI.destroy();hourlyCI=new Chart(document.getElementById('hourlyChart'),{type:'bar',data:{labels:hrs.map(h=>h+':00'),datasets:[{data:hrs.map(h=>rows.filter(v=>parseInt(v.checkin)===h).length),backgroundColor:'#1d4ed8',borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#5a6478',font:{size:9}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#5a6478',font:{size:9},stepSize:1}}}}});
+}
+
+// ─── CHECKOUT ─────────────────────────────────────────────────────────
+function renderCheckout(){
+  const q=(document.getElementById('co-search').value||'').toLowerCase();
+  const inside=fv(visitors).filter(v=>v.status==='in'&&(!q||(v.name+v.company+v.unit).toLowerCase().includes(q)));
+  const empty=document.getElementById('co-empty'),list=document.getElementById('co-list');
+  if(!inside.length){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=inside.map(v=>`<div class="co-row"><div><div style="font-weight:500;font-size:13px">${v.name}</div><div style="font-size:12px;color:var(--text2);margin-top:2px">${v.company} · ${bldName(v.building)} · Unit ${v.unit} · in at ${v.checkin} · ${dur(v.checkin)}</div></div><button class="btn btn-sm btn-success" onclick="doCheckout(${v.id})">Check out</button></div>`).join('');
+}
+function doCheckout(id){
+  const v=visitors.find(x=>x.id===id);if(!v)return;
+  v.status='out';v.checkout=nowTime();v.duration=dur(v.checkin);
+  renderCheckout();renderLive();updateDash();
+  if(currentUnit)renderProfVisitors();
+  showToast(v.name+' checked out');
+}
+
+// ─── LIVE ─────────────────────────────────────────────────────────────
+function renderLive(){
+  const empty=document.getElementById('live-empty');
+  const rows=fv(visitors).filter(v=>v.status==='in'&&(liveFilter==='all'||v.cat===liveFilter));
+  if(!rows.length){document.getElementById('live-tbody').innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  document.getElementById('live-tbody').innerHTML=rows.map(v=>`<tr><td>${v.name}</td><td>${v.company}</td><td style="font-size:11px;color:var(--text3)">${bldName(v.building)}</td><td style="cursor:pointer;color:var(--blue)" onclick="openUnit('${v.unit}','${v.building}')">${v.unit}</td><td>${catBadge(v.cat)}</td><td>${fmt(v.date)}</td><td>${v.checkin}</td><td>${dur(v.checkin)}</td><td style="display:${role==='security'?'':'none'}">${role==='security'?`<button class="btn btn-sm btn-success" onclick="doCheckout(${v.id})">Check out</button>`:''}</td></tr>`).join('');
+}
+function filterLive(f,el){liveFilter=f;document.querySelectorAll('#live-chips .rchip').forEach(c=>c.classList.remove('active'));el.classList.add('active');renderLive();}
+
+// ─── LOG ──────────────────────────────────────────────────────────────
+function renderLog(){
+  const q=(document.getElementById('log-search').value||'').toLowerCase();
+  const bf=document.getElementById('log-bld').value,cf=document.getElementById('log-cat').value;
+  const cpf=document.getElementById('log-co').value,sf=document.getElementById('log-status').value;
+  let rows=fv(visitors).filter(v=>(!q||(v.name+v.company+v.unit+v.cat+(v.purpose||'')).toLowerCase().includes(q))&&(!bf||v.building===bf)&&(!cf||v.cat===cf)&&(!cpf||v.company===cpf)&&(!sf||v.status===sf));
+  rows=filterDate(rows,'log-from','log-to').sort((a,b)=>b.date.localeCompare(a.date)||b.checkin.localeCompare(a.checkin));
+  const from=document.getElementById('log-from').value,to=document.getElementById('log-to').value;
+  const rl=from&&to?`${fmt(from)} – ${fmt(to)}`:from?`From ${fmt(from)}`:to?`Until ${fmt(to)}`:'All time';
+  document.getElementById('log-summary').innerHTML=`Showing <strong>${rows.length}</strong> visits · <strong>${rl}</strong>`;
+  const empty=document.getElementById('log-empty');
+  if(!rows.length){document.getElementById('log-tbody').innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  document.getElementById('log-tbody').innerHTML=rows.map(v=>`<tr><td>${v.name}</td><td>${v.company}</td><td style="font-size:11px;color:var(--text3)">${bldName(v.building)}</td><td style="cursor:pointer;color:var(--blue)" onclick="openUnit('${v.unit}','${v.building}')">${v.unit}</td><td>${catBadge(v.cat)}</td><td style="color:var(--text2)">${v.purpose||'—'}</td><td>${fmt(v.date)}</td><td>${v.checkin}</td><td>${v.checkout||'—'}</td><td>${v.checkout?v.duration:'Active'}</td><td><span class="status-dot dot-${v.status}"></span>${v.status==='in'?'In':'Out'}</td></tr>`).join('');
+}
+
+// ─── UNIT GRID ────────────────────────────────────────────────────────
+function renderGridBldTabs(){
+  const active=isAll()?BUILDINGS:BUILDINGS.filter(b=>selectedBlds.has(b.id));
+  if(!active.length)return;
+  if(!active.find(b=>b.id===gridBld))gridBld=active[0].id;
+  document.getElementById('grid-bld-tabs').innerHTML=active.map(b=>`<div class="bld-tab ${b.id===gridBld?'active':''}" onclick="setGridBld('${b.id}')">${b.name}<span style="margin-left:6px;opacity:.6;font-size:10px">${ALL_UNITS[b.id]?.length||0}</span></div>`).join('');
+}
+function setGridBld(id){gridBld=id;renderGridBldTabs();renderGrid();}
+function setGridMode(m){
+  gridMode=m;
+  ['today','live','pick'].forEach(x=>document.getElementById('grc-'+x).className='rchip'+(x===m?' active':''));
+  const dp=document.getElementById('grid-date');dp.style.display=m==='pick'?'block':'none';
+  if(m==='pick'&&!dp.value)dp.value=TODAY;
+  renderGrid();
+}
+function getGridVis(){
+  let base=visitors.filter(v=>v.building===gridBld);
+  if(gridMode==='live')return base.filter(v=>v.status==='in');
+  if(gridMode==='today')return base.filter(v=>v.date===TODAY);
+  const d=document.getElementById('grid-date').value||TODAY;
+  return base.filter(v=>v.date===d);
+}
+// ALL visitors ever for this building (to detect ever-flagged)
+function getAllGridVis(){return visitors.filter(v=>v.building===gridBld);}
+
+function tileClass(unit,todayVis,allVis){
+  const todayCos=[...new Set(todayVis.map(v=>v.company))];
+  const allCos=[...new Set(allVis.map(v=>v.company))];
+  const todayFlagged=todayCos.some(c=>isFlagged(c));
+  const todayOther=todayCos.some(c=>!isFlagged(c));
+  const everFlagged=allCos.some(c=>isFlagged(c));
+  if(todayFlagged&&todayOther)return'amber'; // flagged+others today
+  if(todayFlagged)return'red-solid';          // flagged only today
+  if(everFlagged)return'red-frame';           // flagged ever but not today
+  if(todayCos.length>0)return'green';         // other companies today
+  return'none';
+}
+
+function renderGrid(){
+  const todayVis=getGridVis();
+  const allVis=getAllGridVis();
+  // Build maps
+  const todayMap={},allMap={};
+  todayVis.forEach(v=>{if(!todayMap[v.unit])todayMap[v.unit]=[];todayMap[v.unit].push(v);});
+  allVis.forEach(v=>{if(!allMap[v.unit])allMap[v.unit]=[];allMap[v.unit].push(v);});
+  const units=ALL_UNITS[gridBld]||[];
+  // Extra units from visitors not in static list
+  const extraUnits=[...new Set(allVis.map(v=>v.unit).filter(u=>!units.includes(u)))];
+  const allUnitsForBld=[...units,...extraUnits];
+
+  // Summary
+  let red=0,amber=0,green=0,frame=0,none=0,live=0;
+  allUnitsForBld.forEach(u=>{
+    const tc=tileClass(u,todayMap[u]||[],allMap[u]||[]);
+    if(tc==='red-solid')red++;
+    else if(tc==='amber')amber++;
+    else if(tc==='green')green++;
+    else if(tc==='red-frame')frame++;
+    else none++;
+    if((todayMap[u]||[]).some(v=>v.status==='in'))live++;
+  });
+  document.getElementById('grid-summary').innerHTML=`
+    <div class="gs"><strong style="color:var(--red)">${red}</strong>Flagged today</div>
+    <div class="gs"><strong style="color:var(--amber)">${amber}</strong>Mixed today</div>
+    <div class="gs"><strong style="color:var(--green)">${green}</strong>Other companies</div>
+    <div class="gs"><strong style="color:#f87171">${frame}</strong>Ever flagged</div>
+    <div class="gs"><strong>${none}</strong>No visits</div>
+    <div class="gs"><strong style="color:var(--blue)">${live}</strong>Live inside</div>
+    <div class="gs"><strong>${allUnitsForBld.length}</strong>Total units</div>`;
+
+  document.getElementById('unit-grid').innerHTML=allUnitsForBld.map(u=>{
+    const tv=todayMap[u]||[],av=allMap[u]||[];
+    const cls=tileClass(u,tv,av);
+    const hasLive=tv.some(v=>v.status==='in');
+    const todayCos=[...new Set(tv.map(v=>v.company))];
+    const allEverCos=[...new Set(av.map(v=>v.company))];
+    // dots: flagged = red dot, other = black dot
+    const dots=[...new Set(cls==='red-frame'?allEverCos:todayCos)].map(c=>`<div class="u-dot" style="background:${isFlagged(c)?'#ef4444':'#374151'}" title="${c}"></div>`).join('');
+    return`<div class="u-tile ${cls}" onclick="showTp(event,'${u}','${gridBld}')">
+      ${hasLive?'<div class="u-live"></div>':''}
+      <div class="u-label">${u}</div>
+      <div class="u-dots">${dots}</div>
+    </div>`;
+  }).join('');
+}
+
+function showTp(e,unit,bld){
+  const todayVis=getGridVis().filter(v=>v.unit===unit);
+  const allVis=visitors.filter(v=>v.unit===unit&&v.building===bld);
+  const allCos=[...new Set(allVis.map(v=>v.company))];
+  const todayCos=[...new Set(todayVis.map(v=>v.company))];
+  document.getElementById('tp-title').textContent=unit+' · '+bldName(bld);
+  let html='';
+  if(todayVis.length){
+    html+=`<div class="tp-section">Today / selected period</div>`;
+    html+=todayVis.map(v=>`<div class="tp-row"><div class="tp-name ${isFlagged(v.company)?'tp-flag':''}">${v.name}${isFlagged(v.company)?' ⚑':''}</div><div class="tp-meta"><strong>${v.company}</strong> · ${v.cat}</div><div class="tp-meta">${v.checkin}${v.checkout?' → '+v.checkout:' → now'} · <span class="badge badge-${v.status}">${v.status==='in'?'Inside':'Out'}</span></div></div>`).join('');
+  }else{html+=`<div style="font-size:12px;color:var(--text3);padding:4px 0">No visits in selected period.</div>`;}
+  if(allCos.length){
+    html+=`<div class="tp-section">All companies ever visited</div>`;
+    html+=allCos.map(c=>`<div style="font-size:12px;padding:4px 0;display:flex;align-items:center;gap:6px"><div style="width:8px;height:8px;border-radius:50%;background:${isFlagged(c)?'#ef4444':coColor(c)};flex-shrink:0"></div><span ${isFlagged(c)?'style="color:var(--red);font-weight:500"':''}>${c}${isFlagged(c)?' ⚑':''}</span><span style="color:var(--text3);margin-left:auto">${visitors.filter(v=>v.unit===unit&&v.building===bld&&v.company===c).length}x</span></div>`).join('');
+  }
+  html+=`<div style="margin-top:10px"><button class="btn btn-sm btn-primary" onclick="openUnit('${unit}','${bld}');document.getElementById('tp').style.display='none'" style="width:100%">Open unit profile</button></div>`;
+  document.getElementById('tp-body').innerHTML=html;
+  const tp=document.getElementById('tp');
+  const x=Math.min(e.clientX+10,window.innerWidth-270);
+  const y=Math.min(e.clientY+10,window.innerHeight-400);
+  tp.style.left=x+'px';tp.style.top=y+'px';tp.style.display='block';
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.u-tile')&&!e.target.closest('.tp'))document.getElementById('tp').style.display='none';});
+function renderFlagTags(){document.getElementById('flag-tags').innerHTML=flaggedCos.map((f,i)=>`<span class="flag-tag">${f}<button onclick="removeFlag(${i})">×</button></span>`).join('');}
+function addFlag(){const v=document.getElementById('flag-input').value.trim();if(!v)return;if(!flaggedCos.includes(v))flaggedCos.push(v);document.getElementById('flag-input').value='';renderFlagTags();renderGrid();}
+function removeFlag(i){flaggedCos.splice(i,1);renderFlagTags();renderGrid();}
+
+// ─── UNITS LIST ───────────────────────────────────────────────────────
+function renderUnits(){
+  const q=(document.getElementById('unit-search').value||'').toLowerCase();
+  const bf=document.getElementById('unit-bld').value;
+  const unitMap={};
+  fv(visitors).filter(v=>!bf||v.building===bf).forEach(v=>{
+    const k=v.building+'|'+v.unit;
+    if(!unitMap[k])unitMap[k]={unit:v.unit,building:v.building,count:0,inside:0,lastDate:'',lastTime:'',cats:{}};
+    unitMap[k].count++;
+    if(v.status==='in')unitMap[k].inside++;
+    if(v.date>unitMap[k].lastDate||(v.date===unitMap[k].lastDate&&v.checkin>unitMap[k].lastTime)){unitMap[k].lastDate=v.date;unitMap[k].lastTime=v.checkin;}
+    unitMap[k].cats[v.cat]=(unitMap[k].cats[v.cat]||0)+1;
+  });
+  const units=Object.values(unitMap).filter(u=>!q||u.unit.toLowerCase().includes(q)).sort((a,b)=>b.count-a.count);
+  const max=units[0]?.count||1;
+  document.getElementById('units-tbody').innerHTML=units.map(u=>{
+    const topCat=Object.entries(u.cats).sort((a,b)=>b[1]-a[1])[0][0];
+    const res=residents[u.building+'|'+u.unit];
+    return`<tr>
+      <td style="cursor:pointer;color:var(--blue);font-weight:500" onclick="openUnit('${u.unit}','${u.building}')">${u.unit}</td>
+      <td style="font-size:11px;color:var(--text3)">${bldName(u.building)}</td>
+      <td>${res?res.name:'—'}</td>
+      <td>${res?`<span class="badge badge-${res.type.toLowerCase()}">${res.type}</span>`:'—'}</td>
+      <td>${u.count}</td>
+      <td>${u.inside>0?`<span class="badge badge-in">${u.inside} inside</span>`:'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${fmt(u.lastDate)} ${u.lastTime}</td>
+      <td>${catBadge(topCat)}</td>
+      <td><div class="ubar-bg"><div class="ubar-fill" style="width:${Math.round(u.count/max*100)}%"></div></div></td>
+      <td><button class="btn btn-sm" onclick="openUnit('${u.unit}','${u.building}')">Profile</button></td></tr>`;
+  }).join('');
+}
+
+// ─── UNIT PROFILE ─────────────────────────────────────────────────────
+function openUnit(unit,bld){
+  currentUnit=unit;currentBld=bld;
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.nav-item')[6]?.classList.add('active');
+  document.getElementById('page-unit-profile').classList.add('active');
+  ['prof-from','prof-to','prof-cat','prof-status'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  switchUnitTab('visits');
+  const uv=visitors.filter(v=>v.unit===unit&&v.building===bld);
+  const inside=uv.filter(v=>v.status==='in').length;
+  const last=uv.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.checkin.localeCompare(a.checkin))[0];
+  document.getElementById('prof-av').textContent=unit.replace(/[^A-Za-z0-9]/g,'').substring(0,3).toUpperCase();
+  document.getElementById('prof-title').textContent='Unit '+unit;
+  document.getElementById('prof-total').textContent=uv.length;
+  document.getElementById('prof-active').textContent=inside;
+  document.getElementById('prof-last').textContent=last?fmt(last.date):' —';
+  // Badges
+  const res=residents[bld+'|'+unit];
+  let badges=`<span class="ctx-tag">${bldName(bld)}</span>`;
+  if(res)badges+=`<span class="badge badge-${res.type.toLowerCase()}">${res.type}</span>`;
+  document.getElementById('prof-badges').innerHTML=badges;
+  // Resident section
+  renderResidentInfo(bld,unit);
+  // Category cards
+  const cats={};uv.forEach(v=>{cats[v.cat]=(cats[v.cat]||0)+1;});
+  const cc={Delivery:'#2a1f0a',Cleaning:'#14291e',Maintenance:'#2a1515','Fit-out':'#1e1a2e',Snagging:'#2a1525',Contractor:'#1e2d4a',Guest:'#14291e',Other:'#1e2535'};
+  const ct={Delivery:'#f59e0b',Cleaning:'#22c55e',Maintenance:'#f87171','Fit-out':'#a78bfa',Snagging:'#f472b6',Contractor:'#60a5fa',Guest:'#34d399',Other:'#9ca3af'};
+  document.getElementById('prof-cats').innerHTML=Object.entries(cats).map(([c,n])=>`<div class="cat-card" style="background:${cc[c]||'#1e2535'};border-color:${ct[c]||'#374151'}"><div class="cat-card-label" style="color:${ct[c]||'#9ca3af'}">${c}</div><div class="cat-card-val" style="color:${ct[c]||'#e8edf5'}">${n}</div></div>`).join('');
+  renderProfVisitors();
+  renderUnitFoh();
+  document.querySelectorAll('.sec-only').forEach(el=>el.style.display=role==='security'?'':'none');
+  document.querySelectorAll('.foh-only').forEach(el=>el.style.display=role==='foh'?'':'none');
+}
+function renderResidentInfo(bld,unit){
+  const key=bld+'|'+unit;const res=residents[key];
+  const grid=document.getElementById('res-grid');
+  if(!res){grid.innerHTML=`<div style="font-size:13px;color:var(--text3);grid-column:1/-1">No resident info added yet. <span style="color:var(--blue);cursor:pointer" onclick="editResident()">Add now →</span></div>`;return;}
+  const fields=[
+    {l:'Name',v:res.name||'—'},{l:'Type',v:res.type||'—'},{l:'Phone',v:res.phone||'—'},
+    {l:'Email',v:res.email||'—'},{l:'Nationality',v:res.nat||'—'},{l:'Tenant since',v:res.since?fmt(res.since):'—'},
+    {l:'Notes',v:res.notes||'—'},
+  ];
+  grid.innerHTML=fields.map(f=>`<div class="res-field"><strong>${f.v}</strong>${f.l}</div>`).join('');
+}
+function renderProfVisitors(){
+  if(!currentUnit)return;
+  const cf=document.getElementById('prof-cat').value,sf=document.getElementById('prof-status').value;
+  let rows=visitors.filter(v=>v.unit===currentUnit&&v.building===currentBld&&(!cf||v.cat===cf)&&(!sf||v.status===sf));
+  rows=filterDate(rows,'prof-from','prof-to').sort((a,b)=>b.date.localeCompare(a.date)||b.checkin.localeCompare(a.checkin));
+  const empty=document.getElementById('prof-empty');
+  if(!rows.length){document.getElementById('prof-tbody').innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  document.getElementById('prof-tbody').innerHTML=rows.map(v=>`<tr><td>${v.name}</td><td ${isFlagged(v.company)?'style="color:var(--red);font-weight:500"':''}>${v.company}${isFlagged(v.company)?' ⚑':''}</td><td>${catBadge(v.cat)}</td><td style="color:var(--text2)">${v.purpose||'—'}</td><td>${fmt(v.date)}</td><td>${v.checkin}</td><td>${v.checkout||'—'}</td><td>${v.status==='out'?v.duration:'Active'}</td><td>${v.status==='in'&&role==='security'?`<button class="btn btn-sm btn-success" onclick="doCheckout(${v.id})">Check out</button>`:`<span class="badge badge-out">Out</span>`}</td></tr>`).join('');
+}
+function renderUnitFoh(){
+  if(!currentUnit)return;
+  const entries=fohEntries.filter(e=>e.unit===currentUnit&&e.building===currentBld);
+  // Update count badge on tab
+  const countBadge=document.getElementById('utab-foh-count');
+  if(countBadge)countBadge.textContent=entries.length||'';
+  const empty=document.getElementById('upane-foh-empty');
+  if(!entries.length){document.getElementById('upane-foh-list').innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  document.getElementById('upane-foh-list').innerHTML=entries.slice().reverse().map(e=>`
+    <div class="entry-card" style="margin-bottom:8px">
+      <div class="entry-header">
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${e.status==='Hot'?'#ef4444':e.status==='Warm'?'#f59e0b':e.status==='Cold'?'#3b82f6':e.status==='Closed'?'#22c55e':'#5a6478'};flex-shrink:0"></span>
+          <span style="font-size:13px;font-weight:500;color:var(--text)">${e.type}</span>
+          ${sbadge(e.status)}
+          ${e.visitor?`<span style="font-size:12px;color:var(--text3)">${e.visitor}</span>`:''}
+        </div>
+        <div class="entry-meta">${fmt(e.date)} ${e.time} · ${e.by}</div>
+      </div>
+      <div class="entry-body" style="margin-top:6px">${e.note}</div>
+    </div>`).join('');
+}
+function editResident(){
+  const key=currentBld+'|'+currentUnit;const res=residents[key]||{};
+  document.getElementById('rm-name').value=res.name||'';
+  document.getElementById('rm-type').value=res.type||'Owner';
+  document.getElementById('rm-phone').value=res.phone||'';
+  document.getElementById('rm-email').value=res.email||'';
+  document.getElementById('rm-nat').value=res.nat||'';
+  document.getElementById('rm-since').value=res.since||'';
+  document.getElementById('rm-notes').value=res.notes||'';
+  document.getElementById('res-modal-title').textContent='Resident info — Unit '+currentUnit;
+  document.getElementById('res-modal').style.display='flex';
+}
+function saveResident(){
+  const key=currentBld+'|'+currentUnit;
+  residents[key]={name:document.getElementById('rm-name').value.trim(),type:document.getElementById('rm-type').value,phone:document.getElementById('rm-phone').value.trim(),email:document.getElementById('rm-email').value.trim(),nat:document.getElementById('rm-nat').value.trim(),since:document.getElementById('rm-since').value,notes:document.getElementById('rm-notes').value.trim()};
+  document.getElementById('res-modal').style.display='none';
+  renderResidentInfo(currentBld,currentUnit);
+  // update badges
+  const res=residents[key];
+  let badges=`<span class="ctx-tag">${bldName(currentBld)}</span>`;
+  if(res)badges+=`<span class="badge badge-${res.type.toLowerCase()}">${res.type}</span>`;
+  document.getElementById('prof-badges').innerHTML=badges;
+  showToast('Resident info saved');
+}
+function ciFromUnit(){document.getElementById('ci-unit').value=currentUnit;const b=document.getElementById('ci-bld');if(b)b.value=currentBld;nav('checkin',document.querySelector('[onclick*=checkin]'));}
+function fohFromUnit(){
+  fohModalUnit=currentUnit;
+  fohModalBld=currentBld;
+  document.getElementById('fm-unit').value=currentUnit;
+  // pre-fill visitor with any currently-inside company
+  const inside=visitors.filter(v=>v.unit===currentUnit&&v.building===currentBld&&v.status==='in');
+  if(inside.length)document.getElementById('fm-visitor').value=inside[0].company;
+  openFohModal(true);
+}
+
+// ─── FOH ─────────────────────────────────────────────────────────────
+function openFohModal(keep){
+  if(!keep){fohModalUnit=null;fohModalBld=null;['fm-unit','fm-visitor','fm-note','fm-by'].forEach(id=>document.getElementById(id).value='');document.getElementById('fm-type').value='';document.getElementById('fm-status').value='';}
+  document.getElementById('foh-modal').style.display='flex';
+}
+function closeFohModal(){document.getElementById('foh-modal').style.display='none';}
+function saveFoh(){
+  const unit=document.getElementById('fm-unit').value.trim(),type=document.getElementById('fm-type').value,note=document.getElementById('fm-note').value.trim();
+  if(!unit||!type||!note){showToast('Please fill unit, type and entry');return;}
+  const bld=fohModalBld||[...selectedBlds][0]||'b1';
+  const newEntry={id:nextFohId++,unit,building:bld,type,status:document.getElementById('fm-status').value,visitor:document.getElementById('fm-visitor').value.trim(),note,by:document.getElementById('fm-by').value.trim()||'FOH Team',date:TODAY,time:nowTime()};
+  fohEntries.push(newEntry);
+  closeFohModal();
+  renderFoh();
+  updateDash();
+  // Always refresh unit profile FOH tab if the profile is open and matches this entry
+  const profilePage=document.getElementById('page-unit-profile');
+  if(profilePage.classList.contains('active')&&currentUnit===unit&&currentBld===bld){
+    renderUnitFoh();
+    // Also update the FOH tab count badge if visible
+    const fohTab=document.getElementById('utab-foh');
+    if(fohTab)fohTab.classList.add('foh-tab-flash');
+    setTimeout(()=>fohTab&&fohTab.classList.remove('foh-tab-flash'),600);
+  }
+  // If unit profile is open for same unit but FOH tab not active, flash the tab to signal new entry
+  else if(profilePage.classList.contains('active')&&currentUnit===unit){
+    renderUnitFoh();
+  }
+  showToast('FOH entry saved for Unit '+unit);
+}
+function renderFoh(){
+  const q=(document.getElementById('foh-search').value||'').toLowerCase();
+  const tf=document.getElementById('foh-type').value,sf=document.getElementById('foh-status').value;
+  let rows=ff(fohEntries).filter(e=>(!q||(e.unit+e.type+e.note+e.visitor+e.by).toLowerCase().includes(q))&&(!tf||e.type===tf)&&(!sf||e.status===sf));
+  rows=rows.sort((a,b)=>b.date.localeCompare(a.date));
+  const empty=document.getElementById('foh-empty');
+  if(!rows.length){document.getElementById('foh-list').innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  document.getElementById('foh-list').innerHTML=rows.map(e=>`<div class="entry-card" style="margin-bottom:10px"><div class="entry-header"><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><span style="cursor:pointer;color:var(--blue);font-weight:500" onclick="openUnit('${e.unit}','${e.building}')">Unit ${e.unit}</span><span style="font-size:11px;color:var(--text3)">${bldName(e.building)}</span><span style="font-size:13px;font-weight:500">${e.type}</span>${sbadge(e.status)}${e.visitor?`<span style="font-size:12px;color:var(--text3)">${e.visitor}</span>`:''}</div><div class="entry-meta">${fmt(e.date)} ${e.time} · ${e.by}</div></div><div class="entry-body" style="margin-top:6px">${e.note}</div></div>`).join('');
+}
+
+// ─── REPORTS ─────────────────────────────────────────────────────────
+function setRepRange(r){
+  ['today','week','month','all'].forEach(x=>{const el=document.getElementById('rc-'+x);if(el)el.className='rchip'+(r===x?' active':'');});
+  if(r!=='custom')setDR('rep-from','rep-to',r,null);
+  renderReports();
+}
+function renderReports(){
+  let rows=filterDate(fv(visitors),'rep-from','rep-to');
+  const from=document.getElementById('rep-from').value,to=document.getElementById('rep-to').value;
+  const rl=from&&to?`${fmt(from)} – ${fmt(to)}`:from?`From ${fmt(from)}`:to?`Until ${fmt(to)}`:'All time';
+  const bldLabel=isAll()?'all buildings':[...selectedBlds].map(id=>bldName(id)).join(', ');
+  const days=from&&to?Math.max(1,Math.round((new Date(to+'T00:00:00')-new Date(from+'T00:00:00'))/86400000)+1):30;
+  document.getElementById('rep-sub').textContent=`${rl} · ${bldLabel}`;
+  document.getElementById('rep-summary').innerHTML=`<strong>${rl}</strong> · <strong>${bldLabel}</strong> · <strong>${rows.length}</strong> visits across <strong>${new Set(rows.map(v=>v.unit)).size}</strong> units`;
+  document.getElementById('rep-total').textContent=rows.length;
+  document.getElementById('rep-co').textContent=new Set(rows.map(v=>v.company).filter(Boolean)).size;
+  document.getElementById('rep-units').textContent=new Set(rows.map(v=>v.unit)).size;
+  document.getElementById('rep-avg').textContent=rows.length?Math.round(rows.length/days*10)/10:0;
+  const cats=['Delivery','Cleaning','Maintenance','Fit-out','Snagging','Contractor','Guest','Other'];
+  const cc=['#3b82f6','#22c55e','#ef4444','#a78bfa','#f472b6','#60a5fa','#34d399','#6b7280'];
+  if(repCatCI)repCatCI.destroy();repCatCI=new Chart(document.getElementById('repCatChart'),{type:'bar',data:{labels:cats,datasets:[{data:cats.map(c=>rows.filter(v=>v.cat===c).length),backgroundColor:cc,borderRadius:3}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#5a6478',font:{size:9}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#5a6478',font:{size:9},stepSize:1}}}}});
+  const unitMap={};rows.forEach(v=>{const k=v.unit+'|'+bldName(v.building);unitMap[k]=(unitMap[k]||0)+1;});
+  const topU=Object.entries(unitMap).sort((a,b)=>b[1]-a[1]).slice(0,6);const maxU=topU[0]?.[1]||1;
+  document.getElementById('top-units').innerHTML=topU.map(([k,c])=>{const[u,b]=k.split('|');return`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)"><div><span style="font-weight:500;font-size:12px">${u}</span><span style="font-size:11px;color:var(--text3);margin-left:5px">${b}</span></div><div style="display:flex;align-items:center;gap:7px"><div class="ubar-bg"><div class="ubar-fill" style="width:${Math.round(c/maxU*100)}%"></div></div><span style="color:var(--text2);font-size:12px;min-width:20px">${c}</span></div></div>`;}).join('');
+  const dateMap={};rows.forEach(v=>{dateMap[v.date]=(dateMap[v.date]||0)+1;});
+  const sd=Object.keys(dateMap).sort();
+  if(trendCI)trendCI.destroy();trendCI=new Chart(document.getElementById('trendChart'),{type:'line',data:{labels:sd.map(d=>{const[y,m,dd]=d.split('-');return dd+'/'+m;}),datasets:[{data:sd.map(d=>dateMap[d]),borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.1)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#3b82f6'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#5a6478',font:{size:9},autoSkip:true,maxTicksLimit:10}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#5a6478',font:{size:9},stepSize:1}}}}});
+}
+
+// ─── CHECK IN ─────────────────────────────────────────────────────────
+function doCheckIn(){
+  const name=document.getElementById('ci-name').value.trim();
+  const co=document.getElementById('ci-co').value.trim();
+  const activeBlds=isAll()?BUILDINGS:BUILDINGS.filter(b=>selectedBlds.has(b.id));
+  let bld=document.getElementById('ci-bld').value;
+  if(!bld&&activeBlds.length===1)bld=activeBlds[0].id;
+  const cat=document.getElementById('ci-cat').value;
+  const unit=document.getElementById('ci-unit').value.trim();
+  const dateVal=document.getElementById('ci-date').value||TODAY;
+  const timeVal=document.getElementById('ci-time').value||nowTime();
+  if(!name||!co||!bld||!cat||!unit){showToast('Please fill name, company, building, category and unit');return;}
+  if(!companies.includes(co)){companies.push(co);updateCoFilter();}
+  visitors.push({id:nextId++,name,company:co,building:bld,unit,cat,purpose:document.getElementById('ci-purpose').value.trim(),checkin:timeVal,checkout:null,date:dateVal,status:'in',duration:''});
+  clearCIForm();showToast(name+' checked in to '+bldName(bld)+' · '+unit);updateDash();
+}
+function clearCIForm(){['ci-name','ci-co','ci-unit','ci-purpose','ci-badge','ci-phone'].forEach(id=>document.getElementById(id).value='');document.getElementById('ci-cat').value='';}
+
+// ─── EXCEL IMPORT / EXPORT ────────────────────────────────────────────
+function exportVisitorsExcel(){
+  const rows=[['Name','Company','Building','Unit','Category','Purpose','Date','Time In','Time Out','Duration','Status'],...visitors.map(v=>[v.name,v.company,bldName(v.building),v.unit,v.cat,v.purpose||'',v.date,v.checkin,v.checkout||'',v.duration,v.status])];
+  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Visitors');XLSX.writeFile(wb,'visitors.xlsx');
+}
+function exportUnitsExcel(){
+  const bld=gridBld;
+  const units=ALL_UNITS[bld]||[];
+  const rows=[['Unit','Status','Resident','Type','Phone','Email','Nationality','Since','Notes']];
+  units.forEach(u=>{const res=residents[bld+'|'+u]||{};rows.push([u,res.name?'occupied':'vacant',res.name||'',res.type||'',res.phone||'',res.email||'',res.nat||'',res.since||'',res.notes||'']);});
+  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,bldName(bld));XLSX.writeFile(wb,bldName(bld)+'_units.xlsx');
+}
+function importUnitsExcel(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const data=XLSX.utils.sheet_to_json(ws,{defval:''});
+      let count=0;
+      data.forEach(row=>{
+        const unit=(row['Unit']||row['unit']||'').toString().trim();
+        if(!unit)return;
+        const key=gridBld+'|'+unit;
+        residents[key]={
+          name:(row['Resident']||row['resident']||'').toString().trim(),
+          type:(row['Type']||row['type']||'Owner').toString().trim(),
+          phone:(row['Phone']||row['phone']||'').toString().trim(),
+          email:(row['Email']||row['email']||'').toString().trim(),
+          nat:(row['Nationality']||row['nationality']||'').toString().trim(),
+          since:(row['Since']||row['since']||'').toString().trim(),
+          notes:(row['Notes']||row['notes']||'').toString().trim(),
+        };count++;
+      });
+      showToast(count+' units imported for '+bldName(gridBld));renderGrid();
+    }catch(err){showToast('Import failed — check file format');}
+    e.target.value='';
+  };reader.readAsBinaryString(file);
+}
+function exportUnitExcel(){
+  if(!currentUnit)return;
+  const res=residents[currentBld+'|'+currentUnit]||{};
+  const uv=visitors.filter(v=>v.unit===currentUnit&&v.building===currentBld);
+  const uf=fohEntries.filter(e=>e.unit===currentUnit&&e.building===currentBld);
+  const wb=XLSX.utils.book_new();
+  // Sheet 1: Resident info
+  const resRows=[['Field','Value'],['Unit',currentUnit],['Building',bldName(currentBld)],['Resident',res.name||''],['Type',res.type||''],['Phone',res.phone||''],['Email',res.email||''],['Nationality',res.nat||''],['Since',res.since||''],['Notes',res.notes||'']];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(resRows),'Resident');
+  // Sheet 2: Visitors
+  const vRows=[['Visitor','Company','Category','Purpose','Date','In','Out','Duration','Status'],...uv.map(v=>[v.name,v.company,v.cat,v.purpose||'',v.date,v.checkin,v.checkout||'',v.duration,v.status])];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(vRows),'Visitors');
+  // Sheet 3: FOH
+  const fRows=[['Date','Time','Type','Status','Visitor','Note','By'],...uf.map(e=>[e.date,e.time,e.type,e.status||'',e.visitor||'',e.note,e.by])];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fRows),'FOH Notes');
+  XLSX.writeFile(wb,'Unit_'+currentUnit+'_'+bldName(currentBld)+'.xlsx');
+}
+function importUnitData(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'binary'});
+      // Try resident sheet
+      const resSheet=wb.Sheets['Resident'];
+      if(resSheet){
+        const data=XLSX.utils.sheet_to_json(resSheet,{header:1,defval:''});
+        const map={};data.forEach(r=>{if(r[0]&&r[1])map[r[0]]=r[1];});
+        const key=currentBld+'|'+currentUnit;
+        residents[key]={name:map['Resident']||'',type:map['Type']||'Owner',phone:map['Phone']||'',email:map['Email']||'',nat:map['Nationality']||'',since:map['Since']||'',notes:map['Notes']||''};
+        renderResidentInfo(currentBld,currentUnit);
+      }
+      showToast('Unit data imported');
+    }catch(err){showToast('Import failed');}
+    e.target.value='';
+  };reader.readAsBinaryString(file);
+}
+
+// ─── TOAST ───────────────────────────────────────────────────────────
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2800);}
+
+// ─── INIT ─────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  loadBldSel();populateDropdowns();renderBldSelector();renderFlagTags();updateCoFilter();
+  document.getElementById('dash-date').value=TODAY;
+  document.getElementById('ci-date').value=TODAY;
+  document.getElementById('ci-time').value=nowTime();
+  setDR('rep-from','rep-to','month',null);
+  setRole('security');
+});
+</script>
+</body>
+</html>
